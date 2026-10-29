@@ -1,0 +1,76 @@
+﻿<%# Read-only sections of a medical record. Needs: record, showClinical, prescriptionLinks %>
+<% if (showClinical) { %>
+<div class="card">
+  <div class="card-head"><h2>Consultations</h2><span class="muted"><%= record.consultations.length %> on file</span></div>
+  <% if (!record.consultations.length) { %>
+    <p class="empty">No consultations recorded yet.</p>
+  <% } %>
+  <% record.consultations.forEach((c) => { %>
+    <div style="border-top:1px solid var(--border); padding-top:.8rem; margin-top:.8rem">
+      <div class="card-head" style="margin-bottom:.3rem">
+        <h3 style="margin:0"><%= c.diagnosis %></h3>
+        <span class="row"><% if (c.mode) { %><%- include('mode', { m: c.mode }) %><% } %><small><%= t.fmtDateTime(c.created_at) %> · <%= c.doctor_name %></small></span>
+      </div>
+      <dl class="kv">
+        <dt>Complaint</dt><dd><%= c.presenting_complaint %></dd>
+        <% if (c.history) { %><dt>History</dt><dd><%= c.history %></dd><% } %>
+        <% if (c.examination) { %><dt>Examination</dt><dd><%= c.examination %></dd><% } %>
+        <% if (c.plan) { %><dt>Plan / advice</dt><dd><%= c.plan %></dd><% } %>
+        <% if (c.follow_up_date) { %><dt>Follow-up</dt><dd><%= t.fmtDate(c.follow_up_date) %><%= c.follow_up_note ? ` – ${c.follow_up_note}` : '' %></dd><% } %>
+      </dl>
+      <% if (c.prescriptions.length) { %>
+        <div class="table-wrap" style="margin-top:.5rem"><table>
+          <thead><tr><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+          <tbody>
+          <% c.prescriptions.forEach((r) => { %>
+            <tr><td><strong><%= r.drug_name %></strong></td><td><%= r.dosage %></td><td><%= r.frequency %></td><td><%= r.duration %></td><td><%= r.instructions || '' %></td></tr>
+          <% }) %>
+          </tbody>
+        </table></div>
+        <% if (prescriptionLinks) { %><p style="margin-top:.5rem"><a class="btn btn-light btn-sm" href="/patient/prescriptions/<%= c.id %>">View / print prescription</a></p><% } %>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+<% } %>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Vital signs</h2>
+    <% if (!record.vitals.length) { %>
+      <p class="empty">No vital signs recorded.</p>
+    <% } else { %>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>BP</th><th>Temp</th><th>Pulse</th><th>Weight</th></tr></thead>
+        <tbody>
+        <% record.vitals.slice(0, 10).forEach((v) => { %>
+          <tr>
+            <td><%= t.fmtDate(v.created_at) %></td>
+            <td><%= v.systolic && v.diastolic ? `${v.systolic}/${v.diastolic}` : '—' %></td>
+            <td><%= v.temperature != null ? `${v.temperature} °C` : '—' %></td>
+            <td><%= v.pulse || '—' %></td>
+            <td><%= v.weight_kg != null ? `${v.weight_kg} kg` : '—' %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+    <% } %>
+  </div>
+
+  <div class="card" id="history">
+    <h2>Past history</h2>
+    <% if (!record.history.length) { %>
+      <p class="empty">No past history captured.</p>
+    <% } else { %>
+      <ul class="timeline">
+        <% record.history.forEach((h) => { %>
+          <li>
+            <strong><%= ENTRY_TYPES[h.entry_type] || h.entry_type %></strong> · <small><%= t.fmtDate(h.entry_date) %></small><br>
+            <%= h.summary %><br>
+            <small>Source: <%= SOURCES[h.source] || h.source %><%= h.recorded_by_name ? ` · captured by ${h.recorded_by_name}` : '' %></small>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>

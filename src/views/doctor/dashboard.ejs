@@ -1,0 +1,69 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <div>
+    <h1><%= isToday ? "Today's consultations" : 'Consultations' %></h1>
+    <span class="muted"><%= t.fmtDate(date) %></span>
+  </div>
+  <form class="row" method="get" action="/doctor">
+    <a class="btn btn-light btn-sm" href="/doctor?date=<%= prevDate %>">← Previous day</a>
+    <input type="date" name="date" value="<%= date %>" style="width:auto">
+    <button class="btn btn-light btn-sm" type="submit">Go</button>
+    <a class="btn btn-light btn-sm" href="/doctor?date=<%= nextDate %>">Next day →</a>
+    <% if (!isToday) { %><a class="btn btn-sm" href="/doctor">Today</a><% } %>
+  </form>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="value"><%= counts.total %></div><div class="label">Booked with me</div></div>
+  <div class="stat"><div class="value"><%= counts.waiting %></div><div class="label">Waiting now</div></div>
+  <div class="stat"><div class="value"><%= counts.remote %></div><div class="label">Remote (video / audio)</div></div>
+  <div class="stat"><div class="value"><%= counts.completed %></div><div class="label">Completed</div></div>
+</div>
+
+<div class="card">
+  <% if (!list.length) { %>
+    <p class="empty">No appointments for this day.</p>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Time</th><th>Patient</th><th>Type</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    <% list.forEach((a) => { %>
+      <tr>
+        <td><%= a.scheduled_at.slice(11, 16) %><% if (a.booked_via === 'walk_in') { %><br><span class="badge">Walk-in</span><% } %></td>
+        <td>
+          <a href="/patients/<%= a.patient_id %>"><%= a.patient_name %></a><br><small><%= a.uhs_number %></small>
+          <% if (a.allergies) { %><br><span class="badge badge-danger">Allergy: <%= a.allergies %></span><% } %>
+        </td>
+        <td><%- include('../partials/mode', { m: a.mode }) %></td>
+        <td><%= a.reason %></td>
+        <td>
+          <%- include('../partials/status', { s: a.status }) %>
+          <% if (a.waitingMinutes != null) { %><br><small>waiting <%= a.waitingMinutes %> min</small><% } %>
+          <% if (a.isLate) { %><br><small>not yet checked in</small><% } %>
+          <% if (!a.doctor_id) { %><br><small>Unassigned – any doctor</small><% } %>
+        </td>
+        <td>
+          <div class="row">
+          <% if (a.status === 'in_progress') { %>
+            <a class="btn btn-sm" href="/doctor/appointments/<%= a.id %>/consult">Continue</a>
+          <% } else if ((a.status === 'booked' || a.status === 'checked_in') && isToday) { %>
+            <form method="post" action="/doctor/appointments/<%= a.id %>/start">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-sm <%= a.mode !== 'in_person' ? 'btn-accent' : '' %>" type="submit"><%= a.mode === 'in_person' ? 'Start' : 'Start call' %></button>
+            </form>
+          <% } %>
+          <% if (a.isLate) { %>
+            <form method="post" action="/doctor/appointments/<%= a.id %>/no-show" data-confirm="Mark this patient as a no-show?">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-danger btn-sm" type="submit">No-show</button>
+            </form>
+          <% } %>
+          </div>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

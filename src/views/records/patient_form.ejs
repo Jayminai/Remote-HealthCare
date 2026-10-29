@@ -1,0 +1,86 @@
+<%- include('../partials/head') %>
+<%
+  const f = form || {};
+  const val = (k) => (f[k] == null ? '' : f[k]);
+  const action = mode === 'new' ? '/records/patients/new' : `/records/patients/${f.id}/edit`;
+%>
+<div class="page-head">
+  <h1><%= mode === 'new' ? 'Register a patient' : `Edit ${f.full_name}` %></h1>
+  <% if (mode === 'edit') { %><a class="btn btn-light" href="/patients/<%= f.id %>">Back to record</a><% } %>
+</div>
+
+<%- include('../partials/errors') %>
+
+<% if (duplicates.length) { %>
+  <div class="card" style="border-color:#f1d49d">
+    <h2>Possible existing records</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>UHS no.</th><th>Matric / staff no.</th><th>Date of birth</th><th>Phone</th><th>Why it matched</th></tr></thead>
+      <tbody>
+      <% duplicates.forEach(({ patient: d, reasons }) => { %>
+        <tr>
+          <td><a href="/patients/<%= d.id %>" target="_blank" rel="noopener"><%= d.full_name %></a></td>
+          <td><%= d.uhs_number %></td><td><%= d.id_number || '—' %></td><td><%= t.fmtDate(d.date_of_birth) %></td><td><%= d.phone || '—' %></td>
+          <td><% reasons.forEach((r) => { %><span class="badge badge-warn"><%= r %></span> <% }) %></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  </div>
+<% } %>
+
+<form method="post" action="<%= action %>" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="card">
+    <h2>Identity</h2>
+    <div class="form-grid">
+      <div class="field"><label for="full_name">Full name</label><input id="full_name" type="text" name="full_name" value="<%= val('full_name') %>" required></div>
+      <div class="field"><label for="category">Category</label>
+        <select id="category" name="category">
+          <% CATEGORIES.forEach((c) => { %><option value="<%= c %>" <%= f.category === c ? 'selected' : '' %>><%= c[0].toUpperCase() + c.slice(1) %></option><% }) %>
+        </select></div>
+      <div class="field"><label for="id_number">Matric / staff number</label><input id="id_number" type="text" name="id_number" value="<%= val('id_number') %>"></div>
+      <div class="field"><label for="date_of_birth">Date of birth</label><input id="date_of_birth" type="date" name="date_of_birth" value="<%= val('date_of_birth') %>" max="<%= t.toDate() %>" required></div>
+      <div class="field"><label for="gender">Gender</label>
+        <select id="gender" name="gender"><option value="">Choose…</option>
+          <% GENDERS.forEach((g) => { %><option value="<%= g %>" <%= f.gender === g ? 'selected' : '' %>><%= g[0].toUpperCase() + g.slice(1) %></option><% }) %>
+        </select></div>
+      <div class="field"><label for="faculty_department">Faculty / department</label><input id="faculty_department" type="text" name="faculty_department" value="<%= val('faculty_department') %>"></div>
+      <div class="field"><label for="legacy_file_no">Old paper file number <span class="hint">(if any)</span></label><input id="legacy_file_no" type="text" name="legacy_file_no" value="<%= val('legacy_file_no') %>"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Contact</h2>
+    <div class="form-grid">
+      <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" name="phone" value="<%= val('phone') %>"></div>
+      <div class="field"><label for="email">Email <span class="hint">(for reminders)</span></label><input id="email" type="email" name="email" value="<%= val('email') %>"></div>
+      <div class="field"><label for="address">Address / hall of residence</label><input id="address" type="text" name="address" value="<%= val('address') %>"></div>
+      <div class="field"><label for="emergency_contact_name">Emergency contact name</label><input id="emergency_contact_name" type="text" name="emergency_contact_name" value="<%= val('emergency_contact_name') %>"></div>
+      <div class="field"><label for="emergency_contact_phone">Emergency contact phone</label><input id="emergency_contact_phone" type="tel" name="emergency_contact_phone" value="<%= val('emergency_contact_phone') %>"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Medical summary</h2>
+    <div class="form-grid">
+      <div class="field"><label for="blood_group">Blood group</label>
+        <select id="blood_group" name="blood_group"><option value="">Unknown</option>
+          <% BLOOD_GROUPS.forEach((b) => { %><option <%= f.blood_group === b ? 'selected' : '' %>><%= b %></option><% }) %>
+        </select></div>
+      <div class="field"><label for="genotype">Genotype</label>
+        <select id="genotype" name="genotype"><option value="">Unknown</option>
+          <% GENOTYPES.forEach((g) => { %><option <%= f.genotype === g ? 'selected' : '' %>><%= g %></option><% }) %>
+        </select></div>
+    </div>
+    <div class="field"><label for="allergies">Allergies</label><input id="allergies" type="text" name="allergies" value="<%= val('allergies') %>" placeholder="e.g. Penicillin"></div>
+    <div class="field"><label for="chronic_conditions">Long-term conditions</label><input id="chronic_conditions" type="text" name="chronic_conditions" value="<%= val('chronic_conditions') %>" placeholder="e.g. Asthma, Sickle cell disease"></div>
+  </div>
+
+  <% if (duplicates.length) { %>
+    <div class="field"><label class="checkbox"><input type="checkbox" name="confirm_not_duplicate" value="1">
+      <span>I have checked the records above and this is a <strong>different person</strong>.</span></label></div>
+  <% } %>
+  <button class="btn" type="submit"><%= mode === 'new' ? 'Register patient' : 'Save changes' %></button>
+</form>
+<%- include('../partials/foot') %>

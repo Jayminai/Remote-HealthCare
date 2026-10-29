@@ -1,0 +1,63 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <div>
+    <h1>Hello, <%= patient.full_name.split(' ')[0] %></h1>
+    <span class="muted">UHS number <strong><%= patient.uhs_number %></strong></span>
+  </div>
+  <a class="btn" href="/patient/book">Book a consultation</a>
+</div>
+
+<div class="split">
+  <div class="card">
+    <div class="card-head"><h2>Upcoming appointments</h2><a href="/patient/appointments">View all</a></div>
+    <% if (!upcoming.length) { %>
+      <p class="empty">You have no upcoming appointments.</p>
+    <% } else { %>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Type</th><th>Doctor</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        <% upcoming.forEach((a) => { %>
+          <tr>
+            <td><%= t.fmtDateTime(a.scheduled_at) %></td>
+            <td><%- include('../partials/mode', { m: a.mode }) %></td>
+            <td><%= a.doctor_name || 'Next available' %></td>
+            <td><%- include('../partials/status', { s: a.status }) %></td>
+            <td><% if (a.canJoin) { %><a class="btn btn-accent btn-sm" href="/consult/<%= a.id %>">Join consultation</a><% } %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+      <p class="muted" style="margin-top:.6rem">The "Join" button appears 15 minutes before a video or audio appointment.</p>
+    <% } %>
+  </div>
+
+  <div>
+    <% if (!patient.allergies && !patient.blood_group) { %>
+      <div class="alert alert-info">Tell the doctor about any allergies during your first consultation so they are recorded in your file.</div>
+    <% } %>
+    <div class="card">
+      <div class="card-head"><h2>Recent consultations</h2><a href="/patient/records">My record</a></div>
+      <% if (!recent.length) { %>
+        <p class="empty">No consultations yet.</p>
+      <% } else { %>
+        <ul class="timeline">
+        <% recent.forEach((c) => { %>
+          <li>
+            <strong><%= c.diagnosis %></strong><br>
+            <small><%= t.fmtDate(c.created_at) %> · <%= c.doctor_name %></small>
+            <% if (c.follow_up_date && c.follow_up_date >= t.toDate()) { %>
+              <br><span class="badge badge-warn">Follow-up <%= t.fmtDate(c.follow_up_date) %></span>
+            <% } %>
+          </li>
+        <% }) %>
+        </ul>
+      <% } %>
+    </div>
+    <div class="card">
+      <h2>Need help?</h2>
+      <p>Questions after a visit? <a href="/messages">Send a secure message</a> to your doctor.</p>
+      <p class="muted">Keep your phone number up to date in <a href="/account/profile">your profile</a>.</p>
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

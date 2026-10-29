@@ -1,0 +1,48 @@
+<%- include('../partials/head') %>
+<% const isPatient = currentUser.role === 'patient'; %>
+<div class="page-head"><h1>Secure messages</h1></div>
+
+<div class="split">
+  <div class="card">
+    <% if (!threads.length) { %>
+      <p class="empty">No conversations yet.</p>
+    <% } else { %>
+      <div class="table-wrap"><table>
+        <thead><tr><th><%= isPatient ? 'Doctor' : 'Patient' %></th><th>Last message</th><th>When</th></tr></thead>
+        <tbody>
+        <% threads.forEach((th) => { %>
+          <tr>
+            <td>
+              <a href="/messages/<%= th.patient_id %>/<%= th.doctor_id %>"><%= isPatient ? th.doctor_name : th.patient_name %></a>
+              <% if (th.unread) { %><span class="pill"><%= th.unread %></span><% } %>
+              <% if (!isPatient) { %><br><small><%= th.uhs_number %></small><% } %>
+            </td>
+            <td><%= th.last_body.length > 80 ? th.last_body.slice(0, 80) + '…' : th.last_body %></td>
+            <td><small><%= t.fmtDateTime(th.last_at) %></small></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <% if (isPatient) { %>
+      <h2>Start a conversation</h2>
+      <% if (!doctors.length) { %>
+        <p class="muted">You can message a doctor after you have had an appointment with them.</p>
+      <% } else { %>
+        <ul>
+          <% doctors.forEach((d) => { %>
+            <li><a href="/messages/<%= patient.id %>/<%= d.id %>"><%= d.full_name %></a><%= d.specialty ? ` – ${d.specialty}` : '' %></li>
+          <% }) %>
+        </ul>
+      <% } %>
+      <p class="muted">Messages are for non-urgent questions. Doctors usually reply within one working day.</p>
+    <% } else { %>
+      <h2>Message a patient</h2>
+      <p class="muted">Open a patient's record from <a href="/doctor/patients">Patients</a> and choose "Message patient".</p>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

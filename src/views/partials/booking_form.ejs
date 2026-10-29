@@ -1,0 +1,40 @@
+<%# Shared by patient booking and records-office (phone) booking. Needs: action, form, doctors, minDate, maxDate %>
+<form method="post" action="<%= action %>" data-booking data-selected-time="<%= form.time || '' %>" novalidate>
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+  <label>Consultation type</label>
+  <div class="radio-cards">
+    <label><input type="radio" name="mode" value="video" <%= form.mode === 'video' ? 'checked' : '' %>>
+      <span>Video call<small>See the doctor from your phone or laptop</small></span></label>
+    <label><input type="radio" name="mode" value="audio" <%= form.mode === 'audio' ? 'checked' : '' %>>
+      <span>Audio call<small>Voice only — works on weaker internet</small></span></label>
+    <label><input type="radio" name="mode" value="in_person" <%= form.mode === 'in_person' ? 'checked' : '' %>>
+      <span>In person<small>Visit the UHS clinic at your booked time</small></span></label>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="date">Date</label>
+      <input id="date" type="date" name="date" value="<%= form.date %>" min="<%= minDate %>" max="<%= maxDate %>" required>
+    </div>
+    <div class="field">
+      <label for="doctor_id">Doctor <span class="hint">(optional)</span></label>
+      <select id="doctor_id" name="doctor_id">
+        <option value="">First available doctor</option>
+        <% doctors.forEach((d) => { %>
+          <option value="<%= d.id %>" <%= String(form.doctor_id) === String(d.id) ? 'selected' : '' %>><%= d.full_name %><%= d.specialty ? ` – ${d.specialty}` : '' %></option>
+        <% }) %>
+      </select>
+    </div>
+  </div>
+
+  <label>Time</label>
+  <p id="slot-message" class="muted" aria-live="polite">Choose a date to see available times.</p>
+  <div id="slots" class="slots"></div>
+
+  <div class="field">
+    <label for="reason">Reason for visit</label>
+    <textarea id="reason" name="reason" maxlength="500" required placeholder="e.g. fever and headache for 3 days"><%= form.reason %></textarea>
+  </div>
+  <button class="btn" type="submit">Book appointment</button>
+</form>

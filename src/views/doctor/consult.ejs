@@ -1,0 +1,156 @@
+<%
+  const remote = appt.mode !== 'in_person';
+  const scripts = remote ? [`https://${jitsiDomain}/external_api.js`, '/static/js/consult.js'] : ['/static/js/consult.js'];
+  const p = record.patient;
+%>
+<%- include('../partials/head', { scripts }) %>
+<div class="page-head">
+  <div>
+    <h1><%= p.full_name %></h1>
+    <span class="muted"><%= p.uhs_number %> · <%= t.age(p.date_of_birth) %> yrs · <%= p.gender %> · <%- include('../partials/mode', { m: appt.mode }) %></span>
+  </div>
+  <div class="row">
+    <% if (remote) { %><a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener">Open call in new tab</a><% } %>
+    <a class="btn btn-light" href="/patients/<%= p.id %>" target="_blank" rel="noopener">Full record</a>
+  </div>
+</div>
+
+<% if (p.allergies) { %><p class="allergy">⚠ Allergies: <%= p.allergies %></p><% } %>
+
+<div class="split">
+  <div>
+    <% if (remote) { %>
+      <div id="video" class="video-box" style="margin-bottom:1rem"
+           data-domain="<%= jitsiDomain %>" data-room="UHS-<%= appt.room_id %>"
+           data-name="<%= callName %>" data-audio-only="<%= appt.mode === 'audio' %>">
+        <div class="placeholder"><p>Loading the consultation room…</p></div>
+      </div>
+    <% } %>
+
+    <div class="card">
+      <h2>Consultation notes</h2>
+      <%- include('../partials/errors') %>
+      <form method="post" action="/doctor/appointments/<%= appt.id %>/complete" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="presenting_complaint">Presenting complaint</label>
+          <textarea id="presenting_complaint" name="presenting_complaint" required><%= form.presenting_complaint %></textarea>
+        </div>
+        <div class="field">
+          <label for="history">History of presenting complaint</label>
+          <textarea id="history" name="history"><%= form.history %></textarea>
+        </div>
+        <div class="field">
+          <label for="examination">Examination / observations <% if (remote) { %><span class="hint">(as observed remotely)</span><% } %></label>
+          <textarea id="examination" name="examination"><%= form.examination %></textarea>
+        </div>
+        <div class="field">
+          <label for="diagnosis">Diagnosis / impression</label>
+          <input id="diagnosis" type="text" name="diagnosis" value="<%= form.diagnosis %>" required>
+        </div>
+        <div class="field">
+          <label for="plan">Plan and advice to patient</label>
+          <textarea id="plan" name="plan" placeholder="Treatment, advice, investigations, or 'Come to the clinic for physical examination'"><%= form.plan %></textarea>
+        </div>
+
+        <fieldset>
+          <legend>Prescription (if appropriate)</legend>
+          <div id="rx-list">
+            <% form.rx.forEach((r) => { %>
+              <div class="rx-row">
+                <input type="text" name="drug_name" placeholder="Medicine" value="<%= r.drug_name %>">
+                <input type="text" name="dosage" placeholder="Dose e.g. 500 mg" value="<%= r.dosage %>">
+                <input type="text" name="frequency" placeholder="e.g. 8-hourly" value="<%= r.frequency %>">
+                <input type="text" name="duration" placeholder="e.g. 5 days" value="<%= r.duration %>">
+                <input type="text" name="instructions" placeholder="Instructions" value="<%= r.instructions %>">
+                <button class="btn btn-danger btn-sm" type="button" data-remove-row>✕</button>
+              </div>
+            <% }) %>
+          </div>
+          <template id="rx-template">
+            <div class="rx-row">
+              <input type="text" name="drug_name" placeholder="Medicine">
+              <input type="text" name="dosage" placeholder="Dose e.g. 500 mg">
+              <input type="text" name="frequency" placeholder="e.g. 8-hourly">
+              <input type="text" name="duration" placeholder="e.g. 5 days">
+              <input type="text" name="instructions" placeholder="Instructions">
+              <button class="btn btn-danger btn-sm" type="button" data-remove-row>✕</button>
+            </div>
+          </template>
+          <p><button class="btn btn-light btn-sm" type="button" id="rx-add">+ Add medicine</button>
+            <span class="muted">Leave empty if no medicine is needed.</span></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Follow-up</legend>
+          <div class="form-grid">
+            <div class="field">
+              <label for="follow_up_date">Follow-up date <span class="hint">(optional – patient gets a reminder)</span></label>
+              <input id="follow_up_date" type="date" name="follow_up_date" value="<%= form.follow_up_date %>" min="<%= minFollowUp %>">
+            </div>
+          </div>
+          <div class="field">
+            <label for="follow_up_note">Follow-up message to patient <span class="hint">(sent as a secure message)</span></label>
+            <textarea id="follow_up_note" name="follow_up_note" placeholder="e.g. Complete the antibiotics. Message me if the fever persists after 3 days."><%= form.follow_up_note %></textarea>
+          </div>
+        </fieldset>
+
+        <button class="btn btn-accent" type="submit">Save and complete consultation</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Reason for visit</h2>
+      <p><%= appt.reason %></p>
+      <dl class="kv">
+        <dt>Blood group</dt><dd><%= p.blood_group || '—' %></dd>
+        <dt>Genotype</dt><dd><%= p.genotype || '—' %></dd>
+        <dt>Long-term conditions</dt><dd><%= p.chronic_conditions || 'None recorded' %></dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Latest vital signs</h2>
+      <% if (!vitals) { %>
+        <p class="empty">None recorded.<% if (remote) { %> Ask the patient for any home readings.<% } %></p>
+      <% } else { %>
+        <dl class="kv">
+          <dt>Taken</dt><dd><%= t.fmtDateTime(vitals.created_at) %></dd>
+          <dt>BP</dt><dd><%= vitals.systolic && vitals.diastolic ? `${vitals.systolic}/${vitals.diastolic} mmHg` : '—' %></dd>
+          <dt>Temperature</dt><dd><%= vitals.temperature != null ? `${vitals.temperature} °C` : '—' %></dd>
+          <dt>Pulse</dt><dd><%= vitals.pulse ? `${vitals.pulse} bpm` : '—' %></dd>
+          <dt>Resp. rate</dt><dd><%= vitals.respiratory_rate || '—' %></dd>
+          <dt>Weight</dt><dd><%= vitals.weight_kg != null ? `${vitals.weight_kg} kg` : '—' %></dd>
+          <% if (vitals.notes) { %><dt>Notes</dt><dd><%= vitals.notes %></dd><% } %>
+        </dl>
+      <% } %>
+    </div>
+    <div class="card">
+      <h2>Previous consultations</h2>
+      <% if (!record.consultations.length) { %>
+        <p class="empty">First consultation on this system.</p>
+      <% } else { %>
+        <ul class="timeline">
+          <% record.consultations.slice(0, 5).forEach((c) => { %>
+            <li><strong><%= c.diagnosis %></strong><br>
+              <small><%= t.fmtDate(c.created_at) %> · <%= c.doctor_name %></small>
+              <% if (c.prescriptions.length) { %><br><small>Rx: <%= c.prescriptions.map((r) => r.drug_name).join(', ') %></small><% } %>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </div>
+    <% if (record.history.length) { %>
+    <div class="card">
+      <h2>Past history (paper file)</h2>
+      <ul class="timeline">
+        <% record.history.slice(0, 6).forEach((h) => { %>
+          <li><strong><%= ENTRY_TYPES[h.entry_type] %></strong> · <small><%= t.fmtDate(h.entry_date) %></small><br><%= h.summary %></li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

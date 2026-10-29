@@ -1,0 +1,35 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <h1>Find a patient</h1>
+  <% if (currentUser.role === 'nurse') { %><a class="btn" href="/records/patients/new">Register new patient</a><% } %>
+</div>
+<div class="card">
+  <form method="get" action="<%= currentPath %>" class="row">
+    <input type="search" name="q" value="<%= q %>" placeholder="Name, UHS number, matric/staff number, phone or old file number" style="flex:1; min-width:220px" autofocus>
+    <button class="btn" type="submit">Search</button>
+  </form>
+</div>
+<% if (q) { %>
+<div class="card">
+  <% if (!results.length) { %>
+    <p class="empty">No patients match "<%= q %>".<% if (currentUser.role === 'nurse') { %> <a href="/records/patients/new">Register a new patient</a>.<% } %></p>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>UHS no.</th><th>Matric / staff no.</th><th>Date of birth</th><th>Phone</th><th>Old file no.</th></tr></thead>
+    <tbody>
+    <% results.forEach((p) => { %>
+      <tr>
+        <td><a href="/patients/<%= p.id %>"><%= p.full_name %></a></td>
+        <td><%= p.uhs_number %></td>
+        <td><%= p.id_number || '—' %></td>
+        <td><%= t.fmtDate(p.date_of_birth) %></td>
+        <td><%= p.phone || '—' %></td>
+        <td><%= p.legacy_file_no || '—' %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

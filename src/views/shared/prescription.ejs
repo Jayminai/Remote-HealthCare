@@ -1,0 +1,35 @@
+<%- include('../partials/head') %>
+<div class="row no-print" style="margin-bottom:1rem">
+  <a class="btn btn-light" href="/patient/records">Back to my record</a>
+  <button class="btn" type="button" data-print>Print prescription</button>
+</div>
+<div class="card rx-sheet">
+  <div class="rx-head">
+    <h1 style="margin:0">Prescription</h1>
+    <div class="muted"><%= clinicName %></div>
+  </div>
+  <dl class="kv">
+    <dt>Patient</dt><dd><%= patient.full_name %> (<%= patient.uhs_number %>)</dd>
+    <dt>Age / gender</dt><dd><%= t.age(patient.date_of_birth) %> years · <%= patient.gender %></dd>
+    <dt>Allergies</dt><dd><%= patient.allergies || 'None recorded' %></dd>
+    <dt>Date</dt><dd><%= t.fmtDateTime(c.created_at) %></dd>
+    <dt>Prescriber</dt><dd><%= c.doctor_name %></dd>
+    <dt>Diagnosis</dt><dd><%= c.diagnosis %></dd>
+  </dl>
+  <hr>
+  <% if (!items.length) { %>
+    <p class="empty">No medicines were prescribed at this consultation.</p>
+  <% } else { %>
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>Medicine</th><th>Dose</th><th>Frequency</th><th>Duration</th><th>Instructions</th></tr></thead>
+      <tbody>
+      <% items.forEach((r, i) => { %>
+        <tr><td><%= i + 1 %></td><td><strong><%= r.drug_name %></strong></td><td><%= r.dosage %></td><td><%= r.frequency %></td><td><%= r.duration %></td><td><%= r.instructions || '' %></td></tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+  <hr>
+  <p class="muted">Reference: RX-<%= String(c.id).padStart(6, '0') %>. Present this at the UHS pharmacy. The pharmacist will verify it in the system.</p>
+</div>
+<%- include('../partials/foot') %>

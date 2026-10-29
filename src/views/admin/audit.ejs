@@ -1,0 +1,31 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <h1>Audit log</h1>
+  <form method="get" action="/admin/audit" class="row">
+    <select name="action" style="width:auto">
+      <option value="">All actions</option>
+      <% actions.forEach((a) => { %><option <%= a === action ? 'selected' : '' %>><%= a %></option><% }) %>
+    </select>
+    <button class="btn btn-light btn-sm" type="submit">Filter</button>
+  </form>
+</div>
+<div class="card">
+  <p class="muted">Every sign-in, record view and change is recorded. Showing the latest 300 entries.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Item</th><th>Details</th><th>IP</th></tr></thead>
+    <tbody>
+    <% entries.forEach((e) => { %>
+      <tr>
+        <td style="white-space:nowrap"><small><%= e.created_at %></small></td>
+        <td><%= e.full_name || 'System / anonymous' %><% if (e.role) { %><br><small><%= e.role %></small><% } %></td>
+        <td><code><%= e.action %></code></td>
+        <td><%= e.entity ? `${e.entity} #${e.entity_id ?? ''}` : '' %></td>
+        <td><small><%= e.details || '' %></small></td>
+        <td><small><%= e.ip || '' %></small></td>
+      </tr>
+    <% }) %>
+    <% if (!entries.length) { %><tr><td colspan="6" class="empty">No entries.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('../partials/foot') %>

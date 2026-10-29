@@ -1,0 +1,19 @@
+<%- include('../partials/head') %>
+<div class="narrow card">
+  <h1>Add staff account</h1>
+  <%- include('../partials/errors') %>
+  <form method="post" action="/admin/users/new" novalidate>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field"><label for="role">Role</label>
+      <select id="role" name="role">
+        <% Object.entries(STAFF_ROLES).forEach(([k, l]) => { %><option value="<%= k %>" <%= form.role === k ? 'selected' : '' %>><%= l %></option><% }) %>
+      </select></div>
+    <div class="field"><label for="full_name">Full name</label><input id="full_name" type="text" name="full_name" value="<%= form.full_name || '' %>" required></div>
+    <div class="field"><label for="email">Email</label><input id="email" type="email" name="email" value="<%= form.email || '' %>" required></div>
+    <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" name="phone" value="<%= form.phone || '' %>"></div>
+    <div class="field"><label for="specialty">Specialty <span class="hint">(doctors only)</span></label><input id="specialty" type="text" name="specialty" value="<%= form.specialty || '' %>" placeholder="e.g. General Practice"></div>
+    <p class="muted">A temporary password will be generated. The staff member must change it at first sign-in.</p>
+    <button class="btn" type="submit">Create account</button>
+  </form>
+</div>
+<%- include('../partials/foot') %>

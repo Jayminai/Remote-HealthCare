@@ -1,0 +1,20 @@
+<%- include('../partials/head', { scripts: ['/static/js/booking.js'] }) %>
+<div class="page-head">
+  <div><h1>Book for <%= patient.full_name %></h1><span class="muted"><%= patient.uhs_number %> · <%= patient.phone || 'no phone on file' %></span></div>
+  <a class="btn btn-light" href="/patients/<%= patient.id %>">Back to record</a>
+</div>
+<div class="split">
+  <div class="card">
+    <%- include('../partials/errors') %>
+    <%- include('../partials/booking_form', { action: `/records/patients/${patient.id}/book` }) %>
+  </div>
+  <div class="card">
+    <h2>Phone bookings</h2>
+    <p>Use this form when a patient calls the clinic. Read the date and time back to the patient before saving.</p>
+    <% if (!patient.user_id) { %>
+      <div class="alert alert-info">This patient has no online account, so only <strong>in-person</strong> appointments can be booked.
+        <% if (patient.email) { %>Reminders will be sent to <%= patient.email %>.<% } else { %>No email on file, so remind them by phone.<% } %></div>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

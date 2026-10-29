@@ -1,0 +1,40 @@
+<%- include('../partials/head', { scripts: [`https://${jitsiDomain}/external_api.js`, '/static/js/consult.js'] }) %>
+<div class="page-head">
+  <div>
+    <h1><%= MODES[appt.mode] %> with <%= appt.doctor_name || 'a UHS doctor' %></h1>
+    <span class="muted"><%= t.fmtDateTime(appt.scheduled_at) %> · <%- include('../partials/status', { s: appt.status }) %></span>
+  </div>
+  <a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener">Open in new tab</a>
+</div>
+
+<div class="split">
+  <div>
+    <div id="video" class="video-box"
+         data-domain="<%= jitsiDomain %>"
+         data-room="UHS-<%= appt.room_id %>"
+         data-name="<%= currentUser.full_name %>"
+         data-audio-only="<%= appt.mode === 'audio' %>">
+      <div class="placeholder"><p>Loading the consultation room…</p></div>
+    </div>
+  </div>
+  <div>
+    <div class="card">
+      <h2>Before you start</h2>
+      <ul>
+        <li>Allow your browser to use your <%= appt.mode === 'video' ? 'camera and microphone' : 'microphone' %>.</li>
+        <li>Find a quiet, private place with good network signal.</li>
+        <li>Have any medicines you are taking and recent test results nearby.</li>
+        <li>If the doctor has not joined yet, please wait — you are in the queue.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Your reason for visit</h2>
+      <p><%= appt.reason %></p>
+    </div>
+    <div class="alert alert-info">
+      The room name is private and unique to this appointment. Do not share the link.
+      After the consultation, your notes and any prescription will appear in <a href="/patient/records">My record</a>.
+    </div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

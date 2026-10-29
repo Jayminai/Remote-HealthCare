@@ -1,0 +1,44 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <h1>My profile</h1>
+  <a class="btn btn-light" href="/account/password">Change password</a>
+</div>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Registration details</h2>
+    <dl class="kv">
+      <dt>UHS number</dt><dd><strong><%= patient.uhs_number %></strong></dd>
+      <dt>Name</dt><dd><%= patient.full_name %></dd>
+      <dt>Matric / staff no.</dt><dd><%= patient.id_number || '—' %></dd>
+      <dt>Date of birth</dt><dd><%= t.fmtDate(patient.date_of_birth) %></dd>
+      <dt>Gender</dt><dd><%= patient.gender %></dd>
+      <dt>Email</dt><dd><%= currentUser.email %></dd>
+    </dl>
+    <p class="muted" style="margin-top:1rem">To correct your name, date of birth or ID number, please visit the UHS records office.</p>
+  </div>
+  <div class="card">
+    <h2>Contact details</h2>
+    <%- include('../partials/errors') %>
+    <form method="post" action="/account/profile" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input id="phone" type="tel" name="phone" value="<%= patient.phone || '' %>" required>
+      </div>
+      <div class="field">
+        <label for="address">Address / hall of residence</label>
+        <input id="address" type="text" name="address" value="<%= patient.address || '' %>">
+      </div>
+      <div class="field">
+        <label for="emergency_contact_name">Emergency contact name</label>
+        <input id="emergency_contact_name" type="text" name="emergency_contact_name" value="<%= patient.emergency_contact_name || '' %>">
+      </div>
+      <div class="field">
+        <label for="emergency_contact_phone">Emergency contact phone</label>
+        <input id="emergency_contact_phone" type="tel" name="emergency_contact_phone" value="<%= patient.emergency_contact_phone || '' %>">
+      </div>
+      <button class="btn" type="submit">Save changes</button>
+    </form>
+  </div>
+</div>
+<%- include('../partials/foot') %>

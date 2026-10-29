@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+<% const isPatient = currentUser.role === 'patient'; %>
+<div class="page-head">
+  <div>
+    <h1><%= isPatient ? doctor.full_name : patient.full_name %></h1>
+    <% if (!isPatient) { %><span class="muted"><%= patient.uhs_number %> · <a href="/patients/<%= patient.id %>">View record</a></span><% } %>
+  </div>
+  <a class="btn btn-light" href="/messages">All messages</a>
+</div>
+<div class="card narrow" style="max-width:820px">
+  <div class="thread">
+    <% if (!messages.length) { %><p class="empty">No messages yet. Say hello.</p><% } %>
+    <% messages.forEach((m, i) => { %>
+      <div class="msg <%= m.sender_id === currentUser.id ? 'mine' : '' %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
+        <span class="body"><%= m.body %></span>
+        <span class="meta"><%= t.fmtDateTime(m.created_at) %><%= m.sender_id === currentUser.id && m.read_at ? ' · read' : '' %></span>
+      </div>
+    <% }) %>
+  </div>
+  <hr>
+  <% if (!isPatient && !patient.user_id) { %>
+    <div class="alert alert-info">This patient has no online account. Please contact them by phone.</div>
+  <% } else if (!doctor.is_active) { %>
+    <div class="alert alert-info">This doctor is no longer available on the platform.</div>
+  <% } else { %>
+  <form method="post" action="/messages/<%= patient.id %>/<%= doctor.id %>">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="field">
+      <label for="body">Your message</label>
+      <textarea id="body" name="body" maxlength="2000" required></textarea>
+    </div>
+    <div class="row">
+      <button class="btn" type="submit">Send</button>
+      <% if (isPatient) { %><small class="muted">Not for emergencies. For urgent problems go to the UHS emergency unit.</small><% } %>
+    </div>
+  </form>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

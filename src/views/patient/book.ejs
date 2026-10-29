@@ -1,0 +1,20 @@
+<%- include('../partials/head', { scripts: ['/static/js/booking.js'] }) %>
+<div class="page-head"><h1>Book a consultation</h1></div>
+<div class="split">
+  <div class="card">
+    <%- include('../partials/errors') %>
+    <%- include('../partials/booking_form', { action: '/patient/book' }) %>
+  </div>
+  <div>
+    <div class="card">
+      <h2>Is a remote consultation right for me?</h2>
+      <p><strong>Usually suitable:</strong> follow-up visits, review of test results, mild illnesses (cold, mild fever, minor skin
+        problems), prescription renewals for long-term conditions, mental-health and general health advice.</p>
+      <p><strong>Come in person if</strong> you need a physical examination, injection, dressing, laboratory test, or if your
+        symptoms are severe.</p>
+      <p class="muted">The doctor may ask you to come to the clinic if they cannot safely assess you remotely.</p>
+    </div>
+    <div class="alert alert-warn"><strong>Emergency?</strong> Do not book — go straight to the UHS emergency unit.</div>
+  </div>
+</div>
+<%- include('../partials/foot') %>

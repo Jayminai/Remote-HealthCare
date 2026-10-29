@@ -1,0 +1,25 @@
+<%- include('../partials/head') %>
+<div class="page-head"><h1>Email outbox</h1></div>
+<% if (!smtpConfigured) { %>
+  <div class="alert alert-info">SMTP is not configured, so emails are recorded here but not actually sent.
+    Add SMTP settings to the <code>.env</code> file to send real emails (see README).</div>
+<% } %>
+<div class="card">
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>To</th><th>Subject</th><th>Message</th><th>Status</th></tr></thead>
+    <tbody>
+    <% emails.forEach((m) => { %>
+      <tr>
+        <td style="white-space:nowrap"><small><%= m.created_at %></small></td>
+        <td><%= m.to_email %></td>
+        <td><%= m.subject %></td>
+        <td style="white-space:pre-wrap"><small><%= m.body %></small></td>
+        <td><span class="badge <%= m.status === 'sent' ? 'badge-ok' : m.status === 'failed' ? 'badge-danger' : '' %>"><%= m.status %></span>
+          <% if (m.error) { %><br><small><%= m.error %></small><% } %></td>
+      </tr>
+    <% }) %>
+    <% if (!emails.length) { %><tr><td colspan="5" class="empty">No emails yet.</td></tr><% } %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,111 @@
+<%- include('../partials/head') %>
+<%
+  const pct = (a, b) => (b ? Math.round(((a || 0) / b) * 100) : 0);
+  const waitOf = (k) => wait.find((w) => w.kind === k);
+  const maxHour = Math.max(1, ...byHour.map((h) => h.n));
+  const peak = byHour.reduce((best, h) => (h.n > best.n ? h : best), { n: 0 });
+  const maxDay = Math.max(1, ...byDay.map((d) => d.n));
+  const maxDx = Math.max(1, ...topDiagnoses.map((d) => d.n));
+  const staffCount = (r) => (staff.find((s) => s.role === r) || {}).n || 0;
+  const today = Object.fromEntries(todayByStatus.map((r) => [r.status, r.n]));
+  const finished = (range.completed || 0) + (range.no_show || 0);
+%>
+<div class="page-head">
+  <div><h1>Service dashboard</h1><span class="muted">Last <%= days %> days · <%= t.fmtDate(t.toDate()) %></span></div>
+  <form method="get" action="/admin" class="row">
+    <label for="days" style="margin:0">Period</label>
+    <select id="days" name="days" style="width:auto">
+      <% [7, 30, 90].forEach((d) => { %><option value="<%= d %>" <%= d === days ? 'selected' : '' %>>Last <%= d %> days</option><% }) %>
+    </select>
+    <button class="btn btn-light btn-sm" type="submit">Apply</button>
+  </form>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="value"><%= range.total || 0 %></div><div class="label">Appointments</div></div>
+  <div class="stat"><div class="value"><%= pct(range.remote, range.total) %>%</div><div class="label">Handled remotely (video/audio)</div></div>
+  <div class="stat"><div class="value"><%= waitOf('in_person') ? waitOf('in_person').avg_min + ' min' : '—' %></div><div class="label">Avg. wait – in person</div></div>
+  <div class="stat"><div class="value"><%= waitOf('remote') ? waitOf('remote').avg_min + ' min' : '—' %></div><div class="label">Avg. wait – remote</div></div>
+  <div class="stat"><div class="value"><%= pct(range.no_show, finished) %>%</div><div class="label">No-show rate</div></div>
+  <div class="stat"><div class="value"><%= pct(range.online, range.total) %>%</div><div class="label">Booked online</div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-head"><h2>Peak hours</h2><% if (peak.n) { %><span class="badge badge-warn">Busiest: <%= peak.label %></span><% } %></div>
+    <div class="bars" role="img" aria-label="Appointments by hour of day">
+      <% byHour.forEach((h) => { %>
+        <div class="bar"><span class="num"><%= h.n || '' %></span><div class="fill <%= h.n && h.n === peak.n ? 'peak' : '' %>" style="height:<%= (h.n / maxHour) * 100 %>%"></div></div>
+      <% }) %>
+    </div>
+    <div class="bar-labels"><% byHour.forEach((h) => { %><span><%= h.label.slice(0, 2) %></span><% }) %></div>
+    <p class="muted" style="margin-top:.6rem">Appointments and walk-ins by hour (period selected). Use this to plan staff rotas and to encourage remote bookings at peak times.</p>
+  </div>
+
+  <div class="card">
+    <h2>Daily activity (last 14 days)</h2>
+    <div class="bars" role="img" aria-label="Appointments per day">
+      <% byDay.forEach((d) => { %>
+        <div class="bar"><span class="num"><%= d.n || '' %></span>
+          <div class="fill" style="height:<%= (d.n / maxDay) * 100 %>%"><div class="remote" style="height:<%= d.n ? (d.remote / d.n) * 100 : 0 %>%"></div></div>
+        </div>
+      <% }) %>
+    </div>
+    <div class="bar-labels"><% byDay.forEach((d) => { %><span title="<%= d.label %>"><%= d.label.slice(4) %></span><% }) %></div>
+    <div class="legend"><span><i style="background:var(--primary)"></i>In person</span><span><i style="background:var(--accent)"></i>Remote</span></div>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="card">
+    <h2>Today</h2>
+    <dl class="kv">
+      <% Object.entries(STATUS_LABELS).forEach(([k, l]) => { %><dt><%= l %></dt><dd><%= today[k] || 0 %></dd><% }) %>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>How patients booked</h2>
+    <% [['Online', range.online], ['Phone', range.phone], ['Walk-in', range.walk_in]].forEach(([l, n]) => { %>
+      <div class="hbar"><span><%= l %></span><div class="track"><div style="width:<%= pct(n, range.total) %>%"></div></div><span><%= n || 0 %></span></div>
+    <% }) %>
+    <hr>
+    <dl class="kv">
+      <dt>Completed</dt><dd><%= range.completed || 0 %></dd>
+      <dt>Cancelled</dt><dd><%= range.cancelled || 0 %></dd>
+      <dt>No-show</dt><dd><%= range.no_show || 0 %></dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Records</h2>
+    <dl class="kv">
+      <dt>Patients</dt><dd><%= patients.total %></dd>
+      <dt>Online accounts</dt><dd><%= patients.online || 0 %> (<%= pct(patients.online, patients.total) %>%)</dd>
+      <dt>Paper files digitised</dt><dd><%= patients.digitised || 0 %> (<%= pct(patients.digitised, patients.total) %>%)</dd>
+      <dt>Doctors</dt><dd><%= staffCount('doctor') %></dd>
+      <dt>Nurses / records</dt><dd><%= staffCount('nurse') %></dd>
+      <dt>Administrators</dt><dd><%= staffCount('admin') %></dd>
+    </dl>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Doctor workload</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Doctor</th><th>Appointments</th><th>Completed</th><th>Remote completed</th></tr></thead>
+      <tbody>
+      <% doctorLoad.forEach((d) => { %><tr><td><%= d.full_name %></td><td><%= d.total %></td><td><%= d.completed || 0 %></td><td><%= d.remote || 0 %></td></tr><% }) %>
+      <% if (!doctorLoad.length) { %><tr><td colspan="4" class="empty">No active doctors.</td></tr><% } %>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h2>Most common diagnoses</h2>
+    <% if (!topDiagnoses.length) { %><p class="empty">No consultations in this period.</p><% } %>
+    <% topDiagnoses.forEach((d) => { %>
+      <div class="hbar"><span style="text-transform:capitalize"><%= d.diagnosis %></span><div class="track"><div style="width:<%= (d.n / maxDx) * 100 %>%"></div></div><span><%= d.n %></span></div>
+    <% }) %>
+    <p class="muted" style="margin-top:.6rem">Aggregated counts only — no patient-identifiable information.</p>
+  </div>
+</div>
+<%- include('../partials/foot') %>

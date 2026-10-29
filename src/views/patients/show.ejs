@@ -1,0 +1,154 @@
+<%- include('../partials/head') %>
+<%
+  const p = record.patient;
+  const isNurse = currentUser.role === 'nurse';
+  const upcoming = record.appointments.filter((a) => ['booked', 'checked_in', 'in_progress'].includes(a.status));
+%>
+<div class="page-head">
+  <div>
+    <h1><%= p.full_name %></h1>
+    <span class="row">
+      <strong><%= p.uhs_number %></strong>
+      <span class="badge"><%= p.category %></span>
+      <% if (p.digitised_at) { %><span class="badge badge-ok">Paper file digitised</span><% } else if (p.legacy_file_no) { %><span class="badge badge-warn">Paper file not fully digitised</span><% } %>
+      <% if (account) { %><span class="badge badge-ok">Online access</span><% } else { %><span class="badge">No online account</span><% } %>
+    </span>
+  </div>
+  <div class="row">
+    <% if (isNurse) { %>
+      <a class="btn btn-light" href="/records/patients/<%= p.id %>/edit">Edit details</a>
+      <a class="btn" href="/records/patients/<%= p.id %>/book">Book appointment</a>
+    <% } else if (account) { %>
+      <a class="btn" href="/messages/<%= p.id %>/<%= currentUser.id %>">Message patient</a>
+    <% } %>
+  </div>
+</div>
+
+<% if (p.allergies) { %><p class="allergy">⚠ Allergies: <%= p.allergies %></p><% } %>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Details</h2>
+    <dl class="kv">
+      <dt>Matric / staff no.</dt><dd><%= p.id_number || '—' %></dd>
+      <dt>Date of birth</dt><dd><%= t.fmtDate(p.date_of_birth) %> (<%= t.age(p.date_of_birth) %> yrs)</dd>
+      <dt>Gender</dt><dd><%= p.gender %></dd>
+      <dt>Faculty / dept.</dt><dd><%= p.faculty_department || '—' %></dd>
+      <dt>Phone</dt><dd><%= p.phone || '—' %></dd>
+      <dt>Email</dt><dd><%= p.email || '—' %></dd>
+      <dt>Address</dt><dd><%= p.address || '—' %></dd>
+      <dt>Emergency contact</dt><dd><%= p.emergency_contact_name || '—' %><%= p.emergency_contact_phone ? ` (${p.emergency_contact_phone})` : '' %></dd>
+      <dt>Blood group / genotype</dt><dd><%= p.blood_group || '—' %> / <%= p.genotype || '—' %></dd>
+      <dt>Long-term conditions</dt><dd><%= p.chronic_conditions || 'None recorded' %></dd>
+      <dt>Old file no.</dt><dd><%= p.legacy_file_no || '—' %></dd>
+      <dt>Registered</dt><dd><%= t.fmtDate(p.created_at) %></dd>
+      <% if (account) { %><dt>Last sign-in</dt><dd><%= account.last_login_at ? t.fmtDateTime(account.last_login_at) : 'Never' %></dd><% } %>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h2>Appointments</h2>
+    <% if (!record.appointments.length) { %>
+      <p class="empty">No appointments.</p>
+    <% } else { %>
+      <div class="table-wrap"><table>
+        <thead><tr><th>When</th><th>Type</th><th>Doctor</th><th>Status</th></tr></thead>
+        <tbody>
+        <% record.appointments.slice(0, 8).forEach((a) => { %>
+          <tr><td><%= t.fmtDateTime(a.scheduled_at) %></td><td><%- include('../partials/mode', { m: a.mode }) %></td><td><%= a.doctor_name || 'Any' %></td><td><%- include('../partials/status', { s: a.status }) %></td></tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+    <% } %>
+  </div>
+</div>
+
+<% if (isNurse) { %>
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Walk-in: add to today's queue</h2>
+    <% if (upcoming.some((a) => a.scheduled_at.slice(0, 10) === t.toDate())) { %>
+      <div class="alert alert-info">This patient already has an appointment today. Check them in from the <a href="/records">Today</a> page.</div>
+    <% } %>
+    <form method="post" action="/records/patients/<%= p.id %>/walk-in">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field"><label for="walk_reason">Reason for visit</label><input id="walk_reason" type="text" name="reason" required></div>
+      <div class="field"><label for="walk_doctor">Doctor</label>
+        <select id="walk_doctor" name="doctor_id"><option value="">Any available doctor</option>
+          <% doctors.forEach((d) => { %><option value="<%= d.id %>"><%= d.full_name %></option><% }) %>
+        </select></div>
+      <button class="btn" type="submit">Add to queue</button>
+    </form>
+  </div>
+
+  <div class="card" id="vitals">
+    <h2>Record vital signs</h2>
+    <form method="post" action="/records/patients/<%= p.id %>/vitals">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (appointmentId) { %>
+        <input type="hidden" name="appointment_id" value="<%= appointmentId %>">
+        <input type="hidden" name="return_to" value="/records">
+      <% } %>
+      <div class="form-grid">
+        <div class="field"><label for="systolic">BP systolic</label><input id="systolic" type="number" name="systolic" min="50" max="260"></div>
+        <div class="field"><label for="diastolic">BP diastolic</label><input id="diastolic" type="number" name="diastolic" min="30" max="160"></div>
+        <div class="field"><label for="temperature">Temp (°C)</label><input id="temperature" type="number" name="temperature" step="0.1" min="30" max="45"></div>
+        <div class="field"><label for="pulse">Pulse (bpm)</label><input id="pulse" type="number" name="pulse" min="20" max="250"></div>
+        <div class="field"><label for="respiratory_rate">Resp. rate</label><input id="respiratory_rate" type="number" name="respiratory_rate" min="5" max="80"></div>
+        <div class="field"><label for="weight_kg">Weight (kg)</label><input id="weight_kg" type="number" name="weight_kg" step="0.1" min="1" max="350"></div>
+        <div class="field"><label for="height_cm">Height (cm)</label><input id="height_cm" type="number" name="height_cm" step="0.1" min="30" max="250"></div>
+      </div>
+      <div class="field"><label for="vnotes">Notes</label><input id="vnotes" type="text" name="notes"></div>
+      <button class="btn" type="submit">Save vitals</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Digitise paper file</h2>
+    <p class="muted">Copy important history from the old paper folder<%= p.legacy_file_no ? ` (file ${p.legacy_file_no})` : '' %> into the electronic record.</p>
+    <form method="post" action="/records/patients/<%= p.id %>/history">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="form-grid">
+        <div class="field"><label for="entry_date">Date</label><input id="entry_date" type="date" name="entry_date" max="<%= t.toDate() %>" required></div>
+        <div class="field"><label for="entry_type">Type</label>
+          <select id="entry_type" name="entry_type"><% Object.entries(ENTRY_TYPES).forEach(([k, l]) => { %><option value="<%= k %>"><%= l %></option><% }) %></select></div>
+        <div class="field"><label for="source">Source</label>
+          <select id="source" name="source"><% Object.entries(SOURCES).forEach(([k, l]) => { %><option value="<%= k %>"><%= l %></option><% }) %></select></div>
+      </div>
+      <div class="field"><label for="summary">Summary</label><textarea id="summary" name="summary" required placeholder="e.g. Treated for malaria; Artemether-lumefantrine given"></textarea></div>
+      <button class="btn" type="submit">Add history entry</button>
+    </form>
+    <hr>
+    <form method="post" action="/records/patients/<%= p.id %>/digitised" class="row">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <% if (p.digitised_at) { %>
+        <span class="muted">Marked fully digitised on <%= t.fmtDate(p.digitised_at) %>.</span>
+        <input type="hidden" name="undo" value="1">
+        <button class="btn btn-light btn-sm" type="submit">Undo</button>
+      <% } else { %>
+        <button class="btn btn-accent btn-sm" type="submit">Mark paper file as fully digitised</button>
+      <% } %>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Online access</h2>
+    <% if (account) { %>
+      <p>The patient signs in with <strong><%= account.email %></strong>. If they forget their password, ask the administrator to reset it.</p>
+    <% } else { %>
+      <p>Create an online account for this <strong>existing</strong> record after checking the patient's ID card. A temporary password will be shown once.</p>
+      <form method="post" action="/records/patients/<%= p.id %>/online-access" data-confirm="Have you verified the patient's identity with their ID card?">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field"><label for="access_email">Patient's email</label><input id="access_email" type="email" name="email" value="<%= p.email || '' %>" required></div>
+        <button class="btn" type="submit">Enable online access</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<% if (!showClinical) { %>
+  <div class="alert alert-info">Consultation notes and prescriptions are visible to doctors only.</div>
+<% } %>
+<%- include('../partials/record_sections', { showClinical, prescriptionLinks: false }) %>
+<%- include('../partials/foot') %>

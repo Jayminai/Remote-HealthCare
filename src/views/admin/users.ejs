@@ -1,0 +1,46 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <h1>User accounts</h1>
+  <a class="btn" href="/admin/users/new">Add staff account</a>
+</div>
+<div class="card">
+  <form method="get" action="/admin/users" class="row" style="margin-bottom:.8rem">
+    <label for="role" style="margin:0">Show</label>
+    <select id="role" name="role" style="width:auto">
+      <option value="">All users</option>
+      <% Object.entries(STAFF_ROLES).concat([['patient', 'Patient']]).forEach(([k, l]) => { %>
+        <option value="<%= k %>" <%= role === k ? 'selected' : '' %>><%= l %></option>
+      <% }) %>
+    </select>
+    <button class="btn btn-light btn-sm" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Last sign-in</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    <% users.forEach((u) => { %>
+      <tr>
+        <td><%= u.full_name %><% if (u.specialty) { %><br><small><%= u.specialty %></small><% } %></td>
+        <td><%= STAFF_ROLES[u.role] || 'Patient' %></td>
+        <td><%= u.email %></td>
+        <td><small><%= u.last_login_at ? t.fmtDateTime(u.last_login_at) : 'Never' %></small></td>
+        <td><% if (u.is_active) { %><span class="badge badge-ok">Active</span><% } else { %><span class="badge badge-danger">Deactivated</span><% } %></td>
+        <td>
+          <% if (u.id !== currentUser.id) { %>
+          <div class="row">
+            <form method="post" action="/admin/users/<%= u.id %>/toggle" data-confirm="<%= u.is_active ? 'Deactivate' : 'Activate' %> <%= u.full_name %>?">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-sm <%= u.is_active ? 'btn-danger' : 'btn-light' %>" type="submit"><%= u.is_active ? 'Deactivate' : 'Activate' %></button>
+            </form>
+            <form method="post" action="/admin/users/<%= u.id %>/reset-password" data-confirm="Reset the password for <%= u.full_name %>? A temporary password will be shown.">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button class="btn btn-light btn-sm" type="submit">Reset password</button>
+            </form>
+          </div>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+</div>
+<%- include('../partials/foot') %>

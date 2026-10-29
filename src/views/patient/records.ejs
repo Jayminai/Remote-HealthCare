@@ -1,0 +1,21 @@
+<%- include('../partials/head') %>
+<% const p = record.patient; %>
+<div class="page-head">
+  <div><h1>My medical record</h1><span class="muted">UHS number <strong><%= p.uhs_number %></strong></span></div>
+  <button class="btn btn-light no-print" type="button" data-print>Print</button>
+</div>
+
+<div class="card">
+  <h2>Summary</h2>
+  <dl class="kv">
+    <dt>Name</dt><dd><%= p.full_name %></dd>
+    <dt>Age / gender</dt><dd><%= t.age(p.date_of_birth) %> years · <%= p.gender %></dd>
+    <dt>Blood group / genotype</dt><dd><%= p.blood_group || '—' %> / <%= p.genotype || '—' %></dd>
+    <dt>Allergies</dt><dd><%= p.allergies || 'None recorded' %></dd>
+    <dt>Long-term conditions</dt><dd><%= p.chronic_conditions || 'None recorded' %></dd>
+  </dl>
+  <p class="muted" style="margin-top:.8rem">If anything here is wrong, tell your doctor or the records office.</p>
+</div>
+
+<%- include('../partials/record_sections', { showClinical: true, prescriptionLinks: true }) %>
+<%- include('../partials/foot') %>

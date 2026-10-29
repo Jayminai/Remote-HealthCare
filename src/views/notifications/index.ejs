@@ -1,0 +1,36 @@
+<%- include('../partials/head') %>
+<div class="page-head">
+  <h1>Notifications</h1>
+  <% if (list.some((n) => !n.read_at)) { %>
+    <form method="post" action="/notifications/read-all">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button class="btn btn-light" type="submit">Mark all as read</button>
+    </form>
+  <% } %>
+</div>
+<div class="card">
+  <% if (!list.length) { %>
+    <p class="empty">You have no notifications.</p>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <tbody>
+    <% list.forEach((n) => { %>
+      <tr>
+        <td style="width:1%"><% if (!n.read_at) { %><span class="badge badge-booked">New</span><% } %></td>
+        <td><strong><%= n.title %></strong><br><%= n.body %></td>
+        <td style="white-space:nowrap"><small><%= t.fmtDateTime(n.created_at) %></small></td>
+        <td style="width:1%">
+          <% if (n.link) { %>
+          <form method="post" action="/notifications/<%= n.id %>/open">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button class="btn btn-light btn-sm" type="submit">Open</button>
+          </form>
+          <% } %>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>
