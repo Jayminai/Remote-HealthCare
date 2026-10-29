@@ -21,7 +21,7 @@ Online booking · Video & audio consultations · Electronic medical records · R
 
 <br>
 
-<img src="docs/screenshots/demo.gif" alt="Animated walkthrough: patient books a video consultation, records office queue, doctor queue, patient record, follow-up messages and admin dashboard" width="860">
+<img src="docs/media/walkthrough.gif" alt="Animated walkthrough: patient books a video consultation, records office queue, doctor queue, patient record, follow-up messages and admin dashboard" width="860">
 
 <sub>Walkthrough recorded from the running application with the demo data (<code>npm run seed</code>).</sub>
 
@@ -125,20 +125,20 @@ Each requirement from the interview maps to something you can see in the applica
 ### Public site
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Home page" width="49%">
-  <img src="docs/screenshots/login.png" alt="Sign-in page" width="49%">
+  <img src="docs/media/home.png" alt="Home page" width="49%">
+  <img src="docs/media/login.png" alt="Sign-in page" width="49%">
 </p>
 
 ### 👩‍🎓 Patient
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/patient-dashboard.png" alt="Patient dashboard"><br><sub><b>Dashboard</b>: upcoming appointments and recent consultations</sub></td>
-<td width="50%"><img src="docs/screenshots/patient-book.png" alt="Booking form"><br><sub><b>Book</b>: choose video, audio or in person, and pick from free slots only</sub></td>
+<td width="50%"><img src="docs/media/patient-dashboard.png" alt="Patient dashboard"><br><sub><b>Dashboard</b>: upcoming appointments and recent consultations</sub></td>
+<td width="50%"><img src="docs/media/patient-book.png" alt="Booking form"><br><sub><b>Book</b>: choose video, audio or in person, and pick from free slots only</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/screenshots/patient-record.png" alt="Patient medical record"><br><sub><b>My record</b>: diagnoses, prescriptions (printable), vitals, history</sub></td>
-<td width="50%"><img src="docs/screenshots/messages.png" alt="Secure messages"><br><sub><b>Messages</b>: secure follow-up with the doctor instead of phone calls</sub></td>
+<td width="50%"><img src="docs/media/patient-record.png" alt="Patient medical record"><br><sub><b>My record</b>: diagnoses, prescriptions (printable), vitals, history</sub></td>
+<td width="50%"><img src="docs/media/messages.png" alt="Secure messages"><br><sub><b>Messages</b>: secure follow-up with the doctor instead of phone calls</sub></td>
 </tr>
 </table>
 
@@ -146,8 +146,8 @@ Each requirement from the interview maps to something you can see in the applica
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/doctor-queue.png" alt="Doctor queue"><br><sub><b>My queue</b>: waiting times, walk-ins, allergy alerts, remote calls</sub></td>
-<td width="50%"><img src="docs/screenshots/doctor-consult.png" alt="Remote consultation"><br><sub><b>Remote consultation</b>: embedded video call beside the notes, record and history</sub></td>
+<td width="50%"><img src="docs/media/doctor-queue.png" alt="Doctor queue"><br><sub><b>My queue</b>: waiting times, walk-ins, allergy alerts, remote calls</sub></td>
+<td width="50%"><img src="docs/media/doctor-consult.png" alt="Remote consultation"><br><sub><b>Remote consultation</b>: embedded video call beside the notes, record and history</sub></td>
 </tr>
 </table>
 
@@ -155,8 +155,8 @@ Each requirement from the interview maps to something you can see in the applica
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/records-today.png" alt="Records office today page"><br><sub><b>Today</b>: clinic-wide queue, check-in, patient search before registering</sub></td>
-<td width="50%"><img src="docs/screenshots/records-patient.png" alt="Patient file for the records office"><br><sub><b>Patient file</b>: walk-in, vital signs, digitise the paper folder</sub></td>
+<td width="50%"><img src="docs/media/records-today.png" alt="Records office today page"><br><sub><b>Today</b>: clinic-wide queue, check-in, patient search before registering</sub></td>
+<td width="50%"><img src="docs/media/records-patient.png" alt="Patient file for the records office"><br><sub><b>Patient file</b>: walk-in, vital signs, digitise the paper folder</sub></td>
 </tr>
 </table>
 
@@ -164,15 +164,15 @@ Each requirement from the interview maps to something you can see in the applica
 
 <table>
 <tr>
-<td width="50%"><img src="docs/screenshots/admin-dashboard.png" alt="Admin service dashboard"><br><sub><b>Service dashboard</b>: peak hours, waiting time, remote share, workload</sub></td>
-<td width="50%"><img src="docs/screenshots/admin-audit.png" alt="Audit log"><br><sub><b>Audit log</b>: who viewed or changed which record, and when</sub></td>
+<td width="50%"><img src="docs/media/admin-dashboard.png" alt="Admin service dashboard"><br><sub><b>Service dashboard</b>: peak hours, waiting time, remote share, workload</sub></td>
+<td width="50%"><img src="docs/media/admin-audit.png" alt="Audit log"><br><sub><b>Audit log</b>: who viewed or changed which record, and when</sub></td>
 </tr>
 </table>
 
 ### 📱 Works on phones
 
 <p align="center">
-  <img src="docs/screenshots/mobile-patient.png" alt="Patient dashboard on a phone" width="260">
+  <img src="docs/media/mobile-patient.png" alt="Patient dashboard on a phone" width="260">
 </p>
 
 ---
@@ -606,7 +606,7 @@ Remote-HealthCare/
 ├── api/index.js             # Vercel serverless entry point
 ├── docs/
 │   ├── images/              # University of Ibadan logo
-│   └── screenshots/         # README screenshots and demo GIF
+│   └── media/               # README screenshots and walkthrough GIF
 ├── tests/                   # Automated tests
 ├── .env.example
 ├── vercel.json              # Vercel routing, region, cron and function settings
