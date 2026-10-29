@@ -16,27 +16,29 @@ if (config.smtp.host) {
   });
 }
 
-function sendEmail(to, subject, body) {
+async function sendEmail(to, subject, body) {
   if (!to) return;
-  const id = db.insert('email_outbox', { to_email: to, subject, body, status: 'logged' });
+  const id = await db.insert('email_outbox', { to_email: to, subject, body, status: 'logged' });
   if (!transporter) {
     if (!config.isProduction && process.env.NODE_TEST_CONTEXT == null) {
       console.log(`[email logged] to=${to} subject="${subject}"`);
     }
     return;
   }
-  transporter
-    .sendMail({ from: config.smtp.from, to, subject, text: body })
-    .then(() => db.update('email_outbox', id, { status: 'sent' }))
-    .catch((err) => db.update('email_outbox', id, { status: 'failed', error: String(err.message).slice(0, 500) }));
+  try {
+    await transporter.sendMail({ from: config.smtp.from, to, subject, text: body });
+    await db.update('email_outbox', id, { status: 'sent' });
+  } catch (err) {
+    await db.update('email_outbox', id, { status: 'failed', error: String(err.message).slice(0, 500) });
+  }
 }
 
 /** Notify a user in-app, and optionally by email. */
-function notifyUser(userId, title, body, link = null, { email = true } = {}) {
-  db.insert('notifications', { user_id: userId, title, body, link });
+async function notifyUser(userId, title, body, link = null, { email = true } = {}) {
+  await db.insert('notifications', { user_id: userId, title, body, link });
   if (email) {
-    const user = db.get('SELECT email FROM users WHERE id = ? AND is_active = 1', userId);
-    if (user) sendEmail(user.email, `UHS Telemedicine: ${title}`, `${body}\n\n${link ? config.appUrl + link : config.appUrl}`);
+    const user = await db.get('SELECT email FROM users WHERE id = ? AND is_active = 1', userId);
+    if (user) await sendEmail(user.email, `UHS Telemedicine: ${title}`, `${body}\n\n${link ? config.appUrl + link : config.appUrl}`);
   }
 }
 
@@ -44,11 +46,11 @@ function notifyUser(userId, title, body, link = null, { email = true } = {}) {
  * Notify a patient. Patients registered at the clinic may have no online
  * account; they still receive email if an address is on file.
  */
-function notifyPatient(patientId, title, body, link = null) {
-  const p = db.get('SELECT user_id, email FROM patients WHERE id = ?', patientId);
+async function notifyPatient(patientId, title, body, link = null) {
+  const p = await db.get('SELECT user_id, email FROM patients WHERE id = ?', patientId);
   if (!p) return;
-  if (p.user_id) notifyUser(p.user_id, title, body, link);
-  else if (p.email) sendEmail(p.email, `UHS Telemedicine: ${title}`, body);
+  if (p.user_id) await notifyUser(p.user_id, title, body, link);
+  else if (p.email) await sendEmail(p.email, `UHS Telemedicine: ${title}`, body);
 }
 
 module.exports = { sendEmail, notifyUser, notifyPatient };

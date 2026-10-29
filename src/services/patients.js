@@ -31,7 +31,7 @@ function normalisePhone(phone) {
  * Find existing records that may belong to the same person.
  * Returns [{ patient, reasons: [...] }].
  */
-function findPossibleDuplicates({ id_number, full_name, date_of_birth, phone }, excludeId = null) {
+async function findPossibleDuplicates({ id_number, full_name, date_of_birth, phone }, excludeId = null) {
   const found = new Map();
   const add = (p, reason) => {
     if (p.id === excludeId) return;
@@ -40,18 +40,18 @@ function findPossibleDuplicates({ id_number, full_name, date_of_birth, phone }, 
   };
 
   if (id_number) {
-    const p = db.get('SELECT * FROM patients WHERE id_number = ?', id_number);
+    const p = await db.get('SELECT * FROM patients WHERE id_number = ?', id_number);
     if (p) add(p, 'Same matric/staff number');
   }
   if (date_of_birth && full_name) {
     const target = normaliseName(full_name);
-    for (const p of db.all('SELECT * FROM patients WHERE date_of_birth = ?', date_of_birth)) {
+    for (const p of await db.all('SELECT * FROM patients WHERE date_of_birth = ?', date_of_birth)) {
       if (normaliseName(p.full_name) === target) add(p, 'Same name and date of birth');
     }
   }
   const ph = normalisePhone(phone);
   if (ph.length >= 10) {
-    for (const p of db.all('SELECT * FROM patients WHERE phone IS NOT NULL')) {
+    for (const p of await db.all('SELECT * FROM patients WHERE phone IS NOT NULL')) {
       if (normalisePhone(p.phone) === ph) add(p, 'Same phone number');
     }
   }
@@ -96,25 +96,25 @@ function readPatientForm(body) {
 }
 
 /** Insert a patient and assign the next UHS number. Returns the new id. */
-function createPatient(data, createdBy) {
-  return db.tx(() => {
-    const id = db.insert('patients', {
+async function createPatient(data, createdBy) {
+  return db.tx(async () => {
+    const id = await db.insert('patients', {
       ...data,
       uhs_number: `TMP-${crypto.randomUUID()}`,
       created_by: createdBy,
     });
     const year = new Date().getFullYear();
-    db.update('patients', id, { uhs_number: `UHS-${year}-${String(id).padStart(6, '0')}` });
+    await db.update('patients', id, { uhs_number: `UHS-${year}-${String(id).padStart(6, '0')}` });
     return id;
   });
 }
 
-function patientForUser(userId) {
+async function patientForUser(userId) {
   return db.get('SELECT * FROM patients WHERE user_id = ?', userId);
 }
 
 /** Search by name, UHS number, matric/staff number, phone or old paper file number. */
-function searchPatients(q) {
+async function searchPatients(q) {
   const like = `%${q}%`;
   return db.all(
     `SELECT * FROM patients

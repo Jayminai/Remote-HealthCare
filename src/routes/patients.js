@@ -14,15 +14,15 @@ const appts = require('../services/appointments');
 const router = express.Router();
 router.use(requireAuth, requireRole('doctor', 'nurse'));
 
-router.get('/:id', (req, res) => {
-  const record = getRecord(v.int(req.params.id));
+router.get('/:id', async (req, res) => {
+  const record = await getRecord(v.int(req.params.id));
   if (!record) return res.status(404).render('error', { title: 'Not found', message: 'Patient not found.' });
-  audit(req, 'patient_record_viewed', 'patient', record.patient.id);
+  await audit(req, 'patient_record_viewed', 'patient', record.patient.id);
 
   const showClinical = req.user.role === 'doctor';
   if (!showClinical) record.consultations = [];
   const account = record.patient.user_id
-    ? db.get('SELECT email, last_login_at FROM users WHERE id = ?', record.patient.user_id)
+    ? await db.get('SELECT email, last_login_at FROM users WHERE id = ?', record.patient.user_id)
     : null;
 
   res.render('patients/show', {
@@ -31,7 +31,7 @@ router.get('/:id', (req, res) => {
     account,
     showClinical,
     appointmentId: v.int(req.query.appointment),
-    doctors: appts.activeDoctors(),
+    doctors: await appts.activeDoctors(),
   });
 });
 

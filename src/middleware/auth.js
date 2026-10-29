@@ -1,10 +1,10 @@
 const db = require('../db');
 
 /** Load the signed-in user (if any) onto req.user for every request. */
-function loadUser(req, res, next) {
+async function loadUser(req, res, next) {
   const id = req.session?.userId;
   if (id) {
-    const user = db.get(
+    const user = await db.get(
       'SELECT id, role, full_name, email, phone, specialty, is_active, must_change_password FROM users WHERE id = ?',
       id
     );

@@ -17,17 +17,17 @@ router.use(requireAuth, requireRole('doctor'));
 const notFound = (res) => res.status(404).render('error', { title: 'Not found', message: 'Appointment not found.' });
 
 /** The doctor may act on their own appointments, or pick up an unassigned walk-in. */
-function loadAppt(req) {
-  const appt = appts.getFull(v.int(req.params.id));
+async function loadAppt(req) {
+  const appt = await appts.getFull(v.int(req.params.id));
   if (!appt) return null;
   if (appt.doctor_id === req.user.id) return appt;
   if (appt.doctor_id == null && appt.booked_via === 'walk_in') return appt;
   return null;
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const date = t.isValidDate(req.query.date) ? req.query.date : t.toDate();
-  const list = db.all(
+  const list = await db.all(
     `SELECT a.*, p.full_name AS patient_name, p.uhs_number, p.allergies
        FROM appointments a JOIN patients p ON p.id = a.patient_id
       WHERE a.scheduled_at LIKE ?
@@ -56,33 +56,33 @@ router.get('/', (req, res) => {
   });
 });
 
-router.post('/appointments/:id/start', (req, res) => {
-  const appt = loadAppt(req);
+router.post('/appointments/:id/start', async (req, res) => {
+  const appt = await loadAppt(req);
   if (!appt) return notFound(res);
   if (appt.status === 'in_progress') return res.redirect(`/doctor/appointments/${appt.id}/consult`);
   if (appt.scheduled_at.slice(0, 10) !== t.toDate()) {
     req.flash('error', 'You can only start consultations scheduled for today.');
     return res.redirect('/doctor');
   }
-  if (!appts.start(appt, req.user.id)) {
+  if (!await appts.start(appt, req.user.id)) {
     req.flash('error', 'This consultation cannot be started.');
     return res.redirect('/doctor');
   }
-  audit(req, 'consultation_started', 'appointment', appt.id);
+  await audit(req, 'consultation_started', 'appointment', appt.id);
   if (appt.mode !== 'in_person') {
-    notifyPatient(appt.patient_id, 'Your doctor is ready', `${appts.doctorTitle(req.user.full_name)} has started your ${appts.MODES[appt.mode].toLowerCase()}. Join now.`, `/consult/${appt.id}`);
+    await notifyPatient(appt.patient_id, 'Your doctor is ready', `${appts.doctorTitle(req.user.full_name)} has started your ${appts.MODES[appt.mode].toLowerCase()}. Join now.`, `/consult/${appt.id}`);
   }
   res.redirect(`/doctor/appointments/${appt.id}/consult`);
 });
 
-function renderConsult(req, res, appt, form, errors = [], status = 200) {
-  const record = getRecord(appt.patient_id);
-  audit(req, 'patient_record_viewed', 'patient', appt.patient_id, { via: 'consultation', appointment: appt.id });
+async function renderConsult(req, res, appt, form, errors = [], status = 200) {
+  const record = await getRecord(appt.patient_id);
+  await audit(req, 'patient_record_viewed', 'patient', appt.patient_id, { via: 'consultation', appointment: appt.id });
   res.status(status).render('doctor/consult', {
     title: `Consultation – ${appt.patient_name}`,
     appt,
     record,
-    vitals: latestVitals(appt.patient_id),
+    vitals: await latestVitals(appt.patient_id),
     form,
     errors,
     jitsiDomain: config.jitsiDomain,
@@ -96,18 +96,18 @@ const emptyConsult = {
   follow_up_date: '', follow_up_note: '', rx: [],
 };
 
-router.get('/appointments/:id/consult', (req, res) => {
-  const appt = loadAppt(req);
+router.get('/appointments/:id/consult', async (req, res) => {
+  const appt = await loadAppt(req);
   if (!appt) return notFound(res);
   if (appt.status !== 'in_progress') {
     req.flash('error', 'Start the consultation from your queue first.');
     return res.redirect('/doctor');
   }
-  renderConsult(req, res, appt, { ...emptyConsult, presenting_complaint: appt.reason });
+  await renderConsult(req, res, appt, { ...emptyConsult, presenting_complaint: appt.reason });
 });
 
-router.post('/appointments/:id/complete', (req, res) => {
-  const appt = loadAppt(req);
+router.post('/appointments/:id/complete', async (req, res) => {
+  const appt = await loadAppt(req);
   if (!appt || appt.doctor_id !== req.user.id) return notFound(res);
   if (appt.status !== 'in_progress') {
     req.flash('error', 'This consultation is not in progress.');
@@ -150,8 +150,8 @@ router.post('/appointments/:id/complete', (req, res) => {
   }
   if (errors.length) return renderConsult(req, res, appt, form, errors, 400);
 
-  const consultationId = db.tx(() => {
-    const cid = db.insert('consultations', {
+  const consultationId = await db.tx(async () => {
+    const cid = await db.insert('consultations', {
       appointment_id: appt.id,
       patient_id: appt.patient_id,
       doctor_id: req.user.id,
@@ -164,17 +164,17 @@ router.post('/appointments/:id/complete', (req, res) => {
       follow_up_note: form.follow_up_note || null,
     });
     for (const r of form.rx) {
-      db.insert('prescriptions', {
+      await db.insert('prescriptions', {
         consultation_id: cid, patient_id: appt.patient_id, doctor_id: req.user.id,
         drug_name: r.drug_name, dosage: r.dosage, frequency: r.frequency, duration: r.duration,
         instructions: r.instructions || null,
       });
     }
-    db.update('appointments', appt.id, { status: 'completed', ended_at: t.now() });
+    await db.update('appointments', appt.id, { status: 'completed', ended_at: t.now() });
 
     // A follow-up note becomes a secure message the patient can reply to.
     if (form.follow_up_note && appt.patient_user_id) {
-      db.insert('messages', {
+      await db.insert('messages', {
         patient_id: appt.patient_id, doctor_id: req.user.id, sender_id: req.user.id,
         body: `Follow-up after your consultation on ${t.fmtDate(appt.scheduled_at)}:\n${form.follow_up_note}` +
           (form.follow_up_date ? `\nPlease follow up on ${t.fmtDate(form.follow_up_date)}.` : ''),
@@ -183,8 +183,8 @@ router.post('/appointments/:id/complete', (req, res) => {
     return cid;
   });
 
-  audit(req, 'consultation_completed', 'consultation', consultationId, { appointment: appt.id, prescriptions: form.rx.length });
-  notifyPatient(
+  await audit(req, 'consultation_completed', 'consultation', consultationId, { appointment: appt.id, prescriptions: form.rx.length });
+  await notifyPatient(
     appt.patient_id,
     'Consultation summary available',
     `Your consultation with ${appts.doctorTitle(req.user.full_name)} is complete.` +
@@ -196,12 +196,12 @@ router.post('/appointments/:id/complete', (req, res) => {
   res.redirect('/doctor');
 });
 
-router.post('/appointments/:id/no-show', (req, res) => {
-  const appt = loadAppt(req);
+router.post('/appointments/:id/no-show', async (req, res) => {
+  const appt = await loadAppt(req);
   if (!appt) return notFound(res);
-  if (appts.markNoShow(appt)) {
-    audit(req, 'appointment_no_show', 'appointment', appt.id);
-    notifyPatient(appt.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(appt.scheduled_at)}. Please book again if you still need care.`, '/patient/book');
+  if (await appts.markNoShow(appt)) {
+    await audit(req, 'appointment_no_show', 'appointment', appt.id);
+    await notifyPatient(appt.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(appt.scheduled_at)}. Please book again if you still need care.`, '/patient/book');
     req.flash('success', 'Marked as no-show.');
   } else {
     req.flash('error', 'Only booked appointments whose time has passed can be marked as no-show.');
@@ -209,9 +209,9 @@ router.post('/appointments/:id/no-show', (req, res) => {
   res.redirect('/doctor');
 });
 
-router.get('/patients', (req, res) => {
+router.get('/patients', async (req, res) => {
   const q = v.str(req.query.q, 80);
-  const results = q ? searchPatients(q) : [];
+  const results = q ? await searchPatients(q) : [];
   res.render('shared/patient_search', { title: 'Find a patient', q, results });
 });
 

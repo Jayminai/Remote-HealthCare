@@ -4,8 +4,8 @@ const db = require('../db');
  * Record an action in the audit log.
  * `req` may be null for system actions (e.g. the reminder job).
  */
-function audit(req, action, entity = null, entityId = null, details = null) {
-  db.insert('audit_log', {
+async function audit(req, action, entity = null, entityId = null, details = null) {
+  await db.insert('audit_log', {
     user_id: req?.user?.id ?? null,
     action,
     entity,

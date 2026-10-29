@@ -12,9 +12,9 @@ const { patientForUser } = require('../services/patients');
 const router = express.Router();
 router.use(requireAuth, requireRole('patient'));
 
-router.get('/:id', (req, res) => {
-  const patient = patientForUser(req.user.id);
-  const appt = appts.getFull(v.int(req.params.id));
+router.get('/:id', async (req, res) => {
+  const patient = await patientForUser(req.user.id);
+  const appt = await appts.getFull(v.int(req.params.id));
   if (!appt || !patient || appt.patient_id !== patient.id || appt.mode === 'in_person') {
     return res.status(404).render('error', { title: 'Not found', message: 'Consultation not found.' });
   }
@@ -25,11 +25,11 @@ router.get('/:id', (req, res) => {
       : `The consultation room opens at ${opens.slice(11)} on ${t.fmtDate(appt.scheduled_at)}.`);
     return res.redirect('/patient/appointments');
   }
-  if (appts.checkIn(appt)) audit(req, 'patient_joined_waiting_room', 'appointment', appt.id);
+  if (await appts.checkIn(appt)) await audit(req, 'patient_joined_waiting_room', 'appointment', appt.id);
 
   res.render('consult/room', {
     title: 'Consultation room',
-    appt: appts.getFull(appt.id),
+    appt: await appts.getFull(appt.id),
     jitsiDomain: config.jitsiDomain,
   });
 });

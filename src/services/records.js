@@ -9,11 +9,11 @@ const ENTRY_TYPES = {
 };
 const SOURCES = { paper_file: 'Old paper file', patient_report: 'Reported by patient', external: 'External hospital' };
 
-function getRecord(patientId) {
-  const patient = db.get('SELECT * FROM patients WHERE id = ?', patientId);
+async function getRecord(patientId) {
+  const patient = await db.get('SELECT * FROM patients WHERE id = ?', patientId);
   if (!patient) return null;
 
-  const consultations = db.all(
+  const consultations = await db.all(
     `SELECT c.*, u.full_name AS doctor_name, a.mode, a.scheduled_at
        FROM consultations c
        JOIN users u ON u.id = c.doctor_id
@@ -21,23 +21,23 @@ function getRecord(patientId) {
       WHERE c.patient_id = ? ORDER BY c.created_at DESC`,
     patientId
   );
-  const rx = db.all('SELECT * FROM prescriptions WHERE patient_id = ? ORDER BY id', patientId);
+  const rx = await db.all('SELECT * FROM prescriptions WHERE patient_id = ? ORDER BY id', patientId);
   for (const c of consultations) c.prescriptions = rx.filter((p) => p.consultation_id === c.id);
 
   return {
     patient,
     consultations,
-    vitals: db.all(
+    vitals: await db.all(
       `SELECT v.*, u.full_name AS recorded_by_name FROM vitals v LEFT JOIN users u ON u.id = v.recorded_by
         WHERE v.patient_id = ? ORDER BY v.created_at DESC`,
       patientId
     ),
-    history: db.all(
+    history: await db.all(
       `SELECT r.*, u.full_name AS recorded_by_name FROM record_entries r LEFT JOIN users u ON u.id = r.recorded_by
         WHERE r.patient_id = ? ORDER BY r.entry_date DESC, r.id DESC`,
       patientId
     ),
-    appointments: db.all(
+    appointments: await db.all(
       `SELECT a.*, u.full_name AS doctor_name FROM appointments a LEFT JOIN users u ON u.id = a.doctor_id
         WHERE a.patient_id = ? ORDER BY a.scheduled_at DESC`,
       patientId
@@ -45,7 +45,7 @@ function getRecord(patientId) {
   };
 }
 
-function latestVitals(patientId) {
+async function latestVitals(patientId) {
   return db.get('SELECT * FROM vitals WHERE patient_id = ? ORDER BY created_at DESC, id DESC LIMIT 1', patientId);
 }
 

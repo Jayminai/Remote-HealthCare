@@ -9,9 +9,9 @@ let base;
 let doctorId;
 
 before(async () => {
-  makeUser('admin', 'admin@test.ng');
-  makeUser('nurse', 'nurse@test.ng');
-  doctorId = makeUser('doctor', 'doctor@test.ng', { full_name: 'Dr Test' });
+  await makeUser('admin', 'admin@test.ng');
+  await makeUser('nurse', 'nurse@test.ng');
+  doctorId = await makeUser('doctor', 'doctor@test.ng', { full_name: 'Dr Test' });
   server = createApp().listen(0);
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -44,7 +44,7 @@ test('wrong password is rejected and audited', async () => {
   const c = new Client(base);
   const r = await c.login('admin@test.ng', 'wrong-password1');
   assert.equal(r.status, 401);
-  assert.ok(db.get("SELECT id FROM audit_log WHERE action = 'login_failed'"));
+  assert.ok(await db.get("SELECT id FROM audit_log WHERE action = 'login_failed'"));
 });
 
 test('full journey: register, book, consult, prescribe, follow up', async () => {
@@ -67,7 +67,7 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   assert.ok(slots.slots.length > 0);
   r = await patient.post('/patient/book', { mode: 'video', date, time: slots.slots[0].time, reason: 'Fever for two days', doctor_id: '' }, '/patient/book');
   assert.equal(r.status, 302, r.text.slice(0, 500));
-  const booked = db.get("SELECT * FROM appointments WHERE reason = 'Fever for two days'");
+  const booked = await db.get("SELECT * FROM appointments WHERE reason = 'Fever for two days'");
   assert.equal(booked.doctor_id, doctorId);
   assert.ok(booked.room_id);
 
@@ -76,7 +76,7 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   assert.equal((await patient.get('/admin')).status, 403);
 
   // 3. Move the appointment to today so the doctor can start it now.
-  db.update('appointments', booked.id, { scheduled_at: `${t.toDate()} 00:00` });
+  await db.update('appointments', booked.id, { scheduled_at: `${t.toDate()} 00:00` });
 
   // 4. Doctor starts and completes the consultation with a prescription.
   const doctor = new Client(base);
@@ -103,9 +103,9 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
     follow_up_date: followUp, follow_up_note: 'Message me if the fever continues.',
   }, `/doctor/appointments/${booked.id}/consult`);
   assert.equal(r.status, 302, r.text.slice(0, 800));
-  assert.equal(db.get('SELECT status FROM appointments WHERE id = ?', booked.id).status, 'completed');
-  const consult = db.get('SELECT * FROM consultations WHERE appointment_id = ?', booked.id);
-  assert.equal(db.get('SELECT COUNT(*) AS n FROM prescriptions WHERE consultation_id = ?', consult.id).n, 2);
+  assert.equal((await db.get('SELECT status FROM appointments WHERE id = ?', booked.id)).status, 'completed');
+  const consult = await db.get('SELECT * FROM consultations WHERE appointment_id = ?', booked.id);
+  assert.equal((await db.get('SELECT COUNT(*) AS n FROM prescriptions WHERE consultation_id = ?', consult.id)).n, 2);
 
   // 5. Patient sees the record, prescription, follow-up message and notification.
   const records = await patient.get('/patient/records');
@@ -149,15 +149,15 @@ test('records office registers a walk-in, flags duplicates and records vitals', 
 
   r = await nurse.post(`/records/patients/${pid}/walk-in`, { reason: 'Headache', doctor_id: '' }, `/patients/${pid}`);
   assert.equal(r.location, '/records');
-  assert.equal(db.get("SELECT status FROM appointments WHERE patient_id = ? AND booked_via = 'walk_in'", pid).status, 'checked_in');
+  assert.equal((await db.get("SELECT status FROM appointments WHERE patient_id = ? AND booked_via = 'walk_in'", pid)).status, 'checked_in');
 
   r = await nurse.post(`/records/patients/${pid}/vitals`, { systolic: '120', diastolic: '80', temperature: '37.2' }, `/patients/${pid}`);
   assert.equal(r.status, 302);
-  assert.ok(db.get('SELECT id FROM vitals WHERE patient_id = ?', pid));
+  assert.ok(await db.get('SELECT id FROM vitals WHERE patient_id = ?', pid));
 
   // Out-of-range vitals are refused.
   await nurse.post(`/records/patients/${pid}/vitals`, { temperature: '98.6' }, `/patients/${pid}`);
-  assert.equal(db.get('SELECT COUNT(*) AS n FROM vitals WHERE patient_id = ?', pid).n, 1);
+  assert.equal((await db.get('SELECT COUNT(*) AS n FROM vitals WHERE patient_id = ?', pid)).n, 1);
 
   // Nurses do not see consultation notes.
   const page = await nurse.get(`/patients/${pid}`);
@@ -188,9 +188,9 @@ test('admin dashboard, user management and audit log', async () => {
   assert.match(r.text, /Temporary password/);
 
   // Deactivated accounts cannot sign in.
-  const id = db.get("SELECT id FROM users WHERE email = 'new.doc@test.ng'").id;
+  const id = (await db.get("SELECT id FROM users WHERE email = 'new.doc@test.ng'")).id;
   r = await admin.post(`/admin/users/${id}/toggle`, {}, '/admin/users');
-  assert.equal(db.get('SELECT is_active FROM users WHERE id = ?', id).is_active, 0);
+  assert.equal((await db.get('SELECT is_active FROM users WHERE id = ?', id)).is_active, 0);
 
   // Admins never see clinical records.
   assert.equal((await admin.get('/patients/1')).status, 403);

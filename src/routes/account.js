@@ -10,12 +10,12 @@ const { patientForUser } = require('../services/patients');
 const router = express.Router();
 router.use(requireAuth);
 
-router.get('/password', (req, res) => {
+router.get('/password', async (req, res) => {
   res.render('account/password', { title: 'Change password', errors: [] });
 });
 
-router.post('/password', (req, res) => {
-  const user = db.get('SELECT * FROM users WHERE id = ?', req.user.id);
+router.post('/password', async (req, res) => {
+  const user = await db.get('SELECT * FROM users WHERE id = ?', req.user.id);
   const current = String(req.body.current_password || '');
   const next = String(req.body.new_password || '');
   const errors = [];
@@ -26,20 +26,20 @@ router.post('/password', (req, res) => {
   if (next && next === current) errors.push('The new password must be different from the current one.');
   if (errors.length) return res.status(400).render('account/password', { title: 'Change password', errors });
 
-  db.update('users', user.id, { password_hash: bcrypt.hashSync(next, 10), must_change_password: 0 });
-  audit(req, 'password_changed', 'user', user.id);
+  await db.update('users', user.id, { password_hash: bcrypt.hashSync(next, 10), must_change_password: 0 });
+  await audit(req, 'password_changed', 'user', user.id);
   req.flash('success', 'Your password has been changed.');
   res.redirect(homeFor(user));
 });
 
 // Patients can keep their own contact details up to date.
-router.get('/profile', requireRole('patient'), (req, res) => {
-  const patient = patientForUser(req.user.id);
+router.get('/profile', requireRole('patient'), async (req, res) => {
+  const patient = await patientForUser(req.user.id);
   res.render('account/profile', { title: 'My profile', patient, errors: [] });
 });
 
-router.post('/profile', requireRole('patient'), (req, res) => {
-  const patient = patientForUser(req.user.id);
+router.post('/profile', requireRole('patient'), async (req, res) => {
+  const patient = await patientForUser(req.user.id);
   const data = {
     phone: v.str(req.body.phone, 20),
     address: v.opt(req.body.address, 300),
@@ -52,9 +52,9 @@ router.post('/profile', requireRole('patient'), (req, res) => {
   if (errors.length) {
     return res.status(400).render('account/profile', { title: 'My profile', patient: { ...patient, ...data }, errors });
   }
-  db.update('patients', patient.id, { ...data, updated_at: now() });
-  db.update('users', req.user.id, { phone: data.phone });
-  audit(req, 'patient_profile_updated', 'patient', patient.id);
+  await db.update('patients', patient.id, { ...data, updated_at: now() });
+  await db.update('users', req.user.id, { phone: data.phone });
+  await audit(req, 'patient_profile_updated', 'patient', patient.id);
   req.flash('success', 'Profile updated.');
   res.redirect('/account/profile');
 });

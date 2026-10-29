@@ -8,15 +8,16 @@
 
 Online booking · Video & audio consultations · Electronic medical records · Reminders · Follow-up messaging · Admin dashboards
 
-[![Node.js](https://img.shields.io/badge/Node.js-22.13%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org)
 [![Express](https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white)](https://expressjs.com)
-[![SQLite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
+[![SQLite](https://img.shields.io/badge/SQLite-libSQL%20%2F%20Turso-003B57?logo=sqlite&logoColor=white)](https://turso.tech)
 [![EJS](https://img.shields.io/badge/Views-EJS-B4CA65?logo=ejs&logoColor=black)](https://ejs.co)
 [![Jitsi Meet](https://img.shields.io/badge/Video-Jitsi%20Meet-1D76BA?logo=jitsi&logoColor=white)](https://jitsi.org/meet)
-[![Tests](https://img.shields.io/badge/tests-17%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](#%EF%B8%8F-deploying-to-vercel)
+[![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
 [![NDPA 2023](https://img.shields.io/badge/Privacy-NDPA%202023-0b5cad)](#-security-and-privacy)
 
-[**Quick start**](#-quick-start) · [**Demo accounts**](#-demo-accounts) · [**Screenshots**](#-screenshots) · [**Architecture**](#-system-design) · [**Security**](#-security-and-privacy)
+[**Quick start**](#-quick-start) · [**Deploy**](#%EF%B8%8F-deploying-to-vercel) · [**Demo accounts**](#-demo-accounts) · [**Screenshots**](#-screenshots) · [**Architecture**](#-system-design) · [**Security**](#-security-and-privacy)
 
 <br>
 
@@ -38,14 +39,15 @@ Online booking · Video & audio consultations · Electronic medical records · R
 6. [Technology stack](#-technology-stack)
 7. [Quick start](#-quick-start)
 8. [Demo accounts](#-demo-accounts)
-9. [Configuration](#%EF%B8%8F-configuration)
-10. [System design](#-system-design)
-11. [Database design](#%EF%B8%8F-database-design)
-12. [Security and privacy](#-security-and-privacy)
-13. [Testing](#-testing)
-14. [Project structure](#-project-structure)
-15. [Limitations and future work](#-limitations-and-future-work)
-16. [Troubleshooting](#-troubleshooting)
+9. [Deploying to Vercel](#%EF%B8%8F-deploying-to-vercel)
+10. [Configuration](#%EF%B8%8F-configuration)
+11. [System design](#-system-design)
+12. [Database design](#%EF%B8%8F-database-design)
+13. [Security and privacy](#-security-and-privacy)
+14. [Testing](#-testing)
+15. [Project structure](#-project-structure)
+16. [Limitations and future work](#-limitations-and-future-work)
+17. [Troubleshooting](#-troubleshooting)
 
 ---
 
@@ -234,10 +236,11 @@ Each requirement from the interview maps to something you can see in the applica
 
 | Layer | Choice | Why |
 |---|---|---|
-| Runtime | **Node.js 22.13+** (developed on Node 24) | One language (JavaScript) for the whole system; widely used and easy to host. |
+| Runtime | **Node.js 22+** (developed on Node 24) | One language (JavaScript) for the whole system; widely used and easy to host. |
 | Web framework | **Express 5** | Small, well-documented, and standard for Node web apps. |
 | Views | **EJS** server-rendered templates | Simple pages that work on low-end phones and slow networks; no front-end build step. |
-| Database | **SQLite** via Node's built-in `node:sqlite` | A single file with no database server to install. Easy to back up and enough for a campus clinic. |
+| Database | **SQLite** via `@libsql/client`: a local file in development, a hosted **Turso** database in the cloud | No database server to install locally; the same SQL runs on Turso, which keeps the data on serverless hosting where files are not kept. |
+| Hosting | **Vercel** (serverless function + Vercel Cron) | Free tier, HTTPS by default, automatic deployments from GitHub. Any Node host also works with `npm start`. |
 | Video/audio | **Jitsi Meet** (external API) | Free, open source, runs in the browser with no app install, and can be self-hosted by the university. |
 | Auth | `express-session` (stored in SQLite) + `bcryptjs` | Password hashing and server-side sessions with idle timeout. |
 | Email | `nodemailer` | Works with any SMTP provider. Without SMTP, emails are saved to an outbox for demonstrations. |
@@ -250,7 +253,7 @@ There are no front-end frameworks or CDNs apart from Jitsi; all CSS and JavaScri
 ## 🚀 Quick start
 
 ### Requirements
-- **Node.js 22.13 or newer** (check with `node -v`). Download from <https://nodejs.org>.
+- **Node.js 22 or newer** (check with `node -v`). Download from <https://nodejs.org>.
 - Internet access is needed **only** for video/audio calls (Jitsi). Everything else works offline.
 
 ### Install and run
@@ -279,7 +282,7 @@ Then open **<http://localhost:3000>** in a browser.
 |---|---|
 | `npm start` | Start the server. |
 | `npm run dev` | Start and restart automatically when files change. |
-| `npm test` | Run the automated tests (uses a temporary in-memory database). |
+| `npm test` | Run the automated tests (uses a temporary database). |
 | `npm run seed` | Reset the database with demo data. **Deletes existing data.** |
 
 > [!NOTE]
@@ -323,6 +326,50 @@ sample message thread.
 
 ---
 
+## ☁️ Deploying to Vercel
+
+The app runs on Vercel as a single serverless function ([api/index.js](api/index.js), configured in [vercel.json](vercel.json)).
+Serverless functions cannot keep files between requests, so on Vercel the data lives in a hosted **Turso** database
+(SQLite-compatible). Locally nothing changes: without `TURSO_DATABASE_URL` the app uses `data/uhs.db`.
+
+```mermaid
+flowchart LR
+  GH[GitHub repo] -->|push to a branch| PV[Preview deployment]
+  GH -->|push or merge to main| PR[Production deployment]
+  PV & PR --> F[Vercel function<br/>api/index.js, region dub1]
+  F <--> T[(Turso database<br/>aws-eu-west-1)]
+  C[Vercel Cron<br/>daily 07:00 WAT] -->|/cron/reminders| F
+```
+
+### One-time setup
+
+1. **Import the repository**: [vercel.com/new](https://vercel.com/new) → *Import Git Repository* → `Remote-HealthCare`.
+   Framework preset **Other**; leave the build, output and install commands at Vercel's defaults.
+2. **Add the database**: in the Vercel project open *Storage* → *Create Database* → **Turso**, choose the
+   **Ireland (aws-eu-west-1)** region and connect it to the project. This adds `TURSO_DATABASE_URL` and
+   `TURSO_AUTH_TOKEN` automatically. (Or create the database at [turso.tech](https://turso.tech) and add both variables yourself.)
+3. **Add environment variables** in *Settings* → *Environment Variables* (Production and Preview):
+
+   | Variable | Value |
+   |---|---|
+   | `SESSION_SECRET` | A long random string, e.g. from `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. **Required**: the app will not start without it. |
+   | `CRON_SECRET` | Another long random string. Vercel sends it when calling `/cron/reminders`. |
+   | `SEED_DEMO` | `true` to load the demo accounts and data into the empty database on first start (for demonstrations). |
+   | `APP_URL` | The deployment's address, e.g. `https://remote-healthcare.vercel.app` (used in email links). |
+   | `SMTP_*`, `MAIL_FROM` | Optional, for real email delivery. |
+
+4. **Redeploy** so the new variables take effect.
+
+The first request after a deployment creates the tables (and loads the demo data if `SEED_DEMO=true`); later
+requests are fast. Every push to a branch creates a **preview deployment**; pushes to `main` deploy **production**.
+
+> [!NOTE]
+> **Reminders on Vercel.** There is no always-running process, so reminders are sent during normal traffic (at most
+> once a minute) and by a **daily Vercel Cron job** at 07:00 WAT (the Hobby plan allows one run per day). On a
+> server started with `npm start` the reminder job runs every minute as usual.
+
+---
+
 ## ⚙️ Configuration
 
 All settings are environment variables, usually placed in a `.env` file (see [.env.example](.env.example)).
@@ -337,7 +384,10 @@ All settings are environment variables, usually placed in a `.env` file (see [.e
 | `NODE_ENV` | `development` | Set to `production` for secure cookies and hidden error details. |
 | `SESSION_SECRET` | dev value | **Required in production.** A long random string. |
 | `SESSION_MINUTES` | `30` | Sign out after this many minutes of inactivity. |
-| `DB_PATH` | `data/uhs.db` | SQLite database file. |
+| `DB_PATH` | `data/uhs.db` | Local SQLite database file (ignored when `TURSO_DATABASE_URL` is set). |
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | empty | Hosted Turso database. Required on Vercel. |
+| `SEED_DEMO` | unset | `true` loads the demo data into an **empty** database on first start. |
+| `CRON_SECRET` | empty | Secret for the `/cron/reminders` endpoint (Vercel Cron). |
 | `CLINIC_OPEN` / `CLINIC_CLOSE` | `08:00` / `16:00` | Consultation hours (West Africa Time). |
 | `SLOT_MINUTES` | `20` | Length of each appointment slot. |
 | `CLINIC_DAYS` | `1,2,3,4,5` | Days with consultations (0 = Sunday). |
@@ -345,7 +395,7 @@ All settings are environment variables, usually placed in a `.env` file (see [.e
 | `JITSI_DOMAIN` | `meet.jit.si` | Video server. See [limitations](#-limitations-and-future-work). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | empty | Real email delivery. Leave `SMTP_HOST` empty to record emails in the outbox only. |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | see above | First admin, created on first start if none exists. |
-| `TRUST_PROXY` | unset | Set to `1` behind a reverse proxy that handles HTTPS. |
+| `TRUST_PROXY` | unset | Set to `1` behind a reverse proxy that handles HTTPS (automatic on Vercel). |
 
 </details>
 
@@ -367,8 +417,8 @@ flowchart LR
   end
   P & D & N & A -->|HTTPS| E[Express app<br/>routes + EJS views]
   E --> S[Services<br/>appointments, patients,<br/>records, notify, audit]
-  S --> DB[(SQLite<br/>data/uhs.db)]
-  R[Reminder job<br/>every minute] --> S
+  S --> DB[(SQLite / libSQL<br/>data/uhs.db locally,<br/>Turso on Vercel)]
+  R[Reminder job<br/>every minute / Vercel Cron] --> S
   S -->|SMTP| M[Email]
   P <-->|WebRTC video/audio| J[Jitsi Meet server]
   D <-->|WebRTC video/audio| J
@@ -503,14 +553,14 @@ npm test
 ```
 
 ```
-ℹ tests 17
-ℹ pass 17
+ℹ tests 18
+ℹ pass 18
 ℹ fail 0
 ```
 
-17 automated tests run against a temporary in-memory database:
+18 automated tests run against a temporary database file that is deleted afterwards:
 
-- **Unit tests** ([tests/unit.test.js](tests/unit.test.js)): date handling, UHS number generation, duplicate detection (reordered names, phone formats, ID numbers), form validation, slot generation, least-busy doctor assignment, double-booking prevention (application and database level), reminders sent exactly once, safe redirects, password policy, doctor titles.
+- **Unit tests** ([tests/unit.test.js](tests/unit.test.js)): date handling, UHS number generation, duplicate detection (reordered names, phone formats, ID numbers), form validation, slot generation, least-busy doctor assignment, double-booking prevention (application and database level), reminders sent exactly once, safe redirects, password policy, doctor titles, transactions (rollback and nested calls).
 - **End-to-end HTTP tests** ([tests/http.test.js](tests/http.test.js)):
   - The full patient journey: register → duplicate registration blocked → book → doctor starts and completes the consultation with a prescription → patient sees the record, prescription, follow-up message and notification → patient replies → another patient cannot read the thread.
   - Records office: registration with duplicate warning/override, walk-in, vitals (out-of-range values refused), nurse cannot see clinical notes, enabling online access with forced password change.
@@ -532,10 +582,11 @@ Remote-HealthCare/
 │   ├── config.js            # Settings from environment variables
 │   ├── db/
 │   │   ├── schema.sql       # Database tables (documented)
-│   │   ├── index.js         # Database helper (node:sqlite)
-│   │   ├── session-store.js # Sessions stored in SQLite
-│   │   ├── bootstrap.js     # Creates first admin on a fresh install
-│   │   └── seed.js          # Demo data
+│   │   ├── index.js         # Database helper (libSQL: local file or Turso)
+│   │   ├── session-store.js # Sessions stored in the database
+│   │   ├── bootstrap.js     # Startup: tables, first admin, optional demo data
+│   │   ├── demo-data.js     # Demo data, written in one atomic batch
+│   │   └── seed.js          # npm run seed
 │   ├── middleware/
 │   │   ├── auth.js          # Sign-in and role checks
 │   │   └── security.js      # Security headers, CSRF, login rate limit
@@ -552,11 +603,13 @@ Remote-HealthCare/
 ├── public/
 │   ├── css/style.css
 │   └── js/                  # app.js, booking.js (slot picker), consult.js (video + prescription rows)
+├── api/index.js             # Vercel serverless entry point
 ├── docs/
 │   ├── images/              # University of Ibadan logo
 │   └── screenshots/         # README screenshots and demo GIF
 ├── tests/                   # Automated tests
 ├── .env.example
+├── vercel.json              # Vercel routing, region, cron and function settings
 └── package.json
 ```
 
@@ -577,7 +630,8 @@ Remote-HealthCare/
 - **Single clinic, simple scheduling.** Doctors share one set of clinic hours; there is no per-doctor rota or leave. A rota table would be the next step.
 - **No pharmacy or laboratory modules.** Prescriptions are printable and shown to the patient, but there is no dispensing workflow or lab-request/result system yet.
 - **Password reset by email** is not included; resets are done by the administrator (temporary password).
-- **SQLite** suits one clinic on one server. A very large deployment could move to PostgreSQL, since the SQL is mostly standard.
+- **SQLite / Turso** suits a campus clinic. A very large deployment could move to PostgreSQL, since the SQL is mostly standard.
+- **Reminders on Vercel Hobby** run during site traffic plus one daily cron; a paid plan (or `npm start` on a normal server) gives minute-by-minute reminders.
 - **Two-factor authentication** for staff accounts would strengthen security.
 
 ### Assumptions made
@@ -592,7 +646,9 @@ Remote-HealthCare/
 
 | Problem | Solution |
 |---|---|
-| `Cannot find module 'node:sqlite'` or `DatabaseSync is not a constructor` | Upgrade Node.js to 22.13 or newer. |
+| `--env-file-if-exists` is not a valid option | Upgrade Node.js to 22 or newer. |
+| Vercel: "SESSION_SECRET must be set in production" | Add `SESSION_SECRET` in the Vercel project's environment variables and redeploy. |
+| Vercel: data disappears, or "no such table" | `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` are missing. Connect the Turso database to the project and redeploy. |
 | Port 3000 already in use | Set another port: `PORT=3001 npm start` (PowerShell: `$env:PORT=3001; npm start`). |
 | Video area says the service could not be loaded | Check your internet connection or firewall, or click **Open call in new tab**. |
 | Camera/microphone not working | Allow access in the browser's address bar. Browsers only allow the camera on `localhost` or HTTPS sites. |

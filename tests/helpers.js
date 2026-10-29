@@ -1,15 +1,29 @@
-// Test helpers. Each test file runs in its own process with an in-memory database.
-process.env.DB_PATH = ':memory:';
+// Test helpers. Each test file runs in its own process with its own temporary
+// database file, deleted when the process exits.
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const dbFile = path.join(os.tmpdir(), `uhs-test-${process.pid}-${Date.now()}.db`);
+process.env.DB_PATH = dbFile;
 process.env.SESSION_SECRET = 'test-secret';
+delete process.env.TURSO_DATABASE_URL; // never run tests against a hosted database
 
 const bcrypt = require('bcryptjs');
 const db = require('../src/db');
 const t = require('../src/utils/time');
 const appts = require('../src/services/appointments');
 
+process.on('exit', () => {
+  db.client.close();
+  for (const suffix of ['', '-wal', '-shm', '-journal']) {
+    try { fs.rmSync(dbFile + suffix, { force: true }); } catch { /* still locked on Windows; temp dir is cleaned by the OS */ }
+  }
+});
+
 const HASH = bcrypt.hashSync('Passw0rd1', 4);
 
-function makeUser(role, email, extra = {}) {
+async function makeUser(role, email, extra = {}) {
   return db.insert('users', { role, full_name: extra.full_name || `Test ${role}`, email, password_hash: HASH, ...extra });
 }
 

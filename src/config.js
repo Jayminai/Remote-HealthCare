@@ -18,6 +18,14 @@ const config = {
   sessionSecret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
   sessionMinutes: Number(process.env.SESSION_MINUTES) || 30,
   dbPath: process.env.DB_PATH || path.join(root, 'data', 'uhs.db'),
+  // Hosted database (Turso) for serverless deployments. When set, DB_PATH is ignored.
+  dbUrl: process.env.TURSO_DATABASE_URL || '',
+  dbAuthToken: process.env.TURSO_AUTH_TOKEN || '',
+  // On Vercel there is no long-running process: reminders run on requests and a daily cron.
+  serverless: Boolean(process.env.VERCEL),
+  // Load demo accounts and data into an empty database on first start (for demonstrations).
+  seedDemo: process.env.SEED_DEMO === 'true',
+  cronSecret: process.env.CRON_SECRET || '',
 
   clinic: {
     name: 'University Health Service, University of Ibadan',

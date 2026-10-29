@@ -15,8 +15,8 @@ const router = express.Router();
 router.use(requireAuth, requireRole('patient'));
 
 // Attach the patient's record to every request.
-router.use((req, res, next) => {
-  req.patient = patientForUser(req.user.id);
+router.use(async (req, res, next) => {
+  req.patient = await patientForUser(req.user.id);
   if (!req.patient) {
     return res.status(404).render('error', { title: 'No record', message: 'No patient record is linked to this account. Please contact the UHS records office.' });
   }
@@ -28,13 +28,13 @@ const APPT_SQL = `SELECT a.*, u.full_name AS doctor_name, u.specialty
                     FROM appointments a LEFT JOIN users u ON u.id = a.doctor_id
                    WHERE a.patient_id = ?`;
 
-router.get('/', (req, res) => {
-  const upcoming = db.all(
+router.get('/', async (req, res) => {
+  const upcoming = await db.all(
     `${APPT_SQL} AND a.status IN ('booked','checked_in','in_progress') AND a.scheduled_at >= ? ORDER BY a.scheduled_at`,
     req.patient.id, t.toDate()
   );
   upcoming.forEach((a) => { a.canJoin = appts.canJoin(a); });
-  const recent = db.all(
+  const recent = await db.all(
     `SELECT c.id, c.created_at, c.diagnosis, c.follow_up_date, u.full_name AS doctor_name
        FROM consultations c JOIN users u ON u.id = c.doctor_id
       WHERE c.patient_id = ? ORDER BY c.created_at DESC LIMIT 3`,
@@ -43,10 +43,10 @@ router.get('/', (req, res) => {
   res.render('patient/dashboard', { title: 'My health', upcoming, recent });
 });
 
-router.get('/book', (req, res) => {
+router.get('/book', async (req, res) => {
   res.render('patient/book', {
     title: 'Book a consultation',
-    doctors: appts.activeDoctors(),
+    doctors: await appts.activeDoctors(),
     form: { mode: 'video', doctor_id: '', date: '', time: '', reason: '' },
     errors: [],
     minDate: t.toDate(),
@@ -54,7 +54,7 @@ router.get('/book', (req, res) => {
   });
 });
 
-router.post('/book', (req, res) => {
+router.post('/book', async (req, res) => {
   const form = {
     mode: v.str(req.body.mode),
     doctor_id: v.int(req.body.doctor_id),
@@ -63,7 +63,7 @@ router.post('/book', (req, res) => {
     reason: v.str(req.body.reason, 500),
   };
   try {
-    const id = appts.book({
+    const id = await appts.book({
       patientId: req.patient.id,
       doctorId: form.doctor_id,
       mode: form.mode,
@@ -73,14 +73,14 @@ router.post('/book', (req, res) => {
       bookedVia: 'online',
       createdBy: req.user.id,
     });
-    audit(req, 'appointment_booked', 'appointment', id);
+    await audit(req, 'appointment_booked', 'appointment', id);
     req.flash('success', `Appointment booked for ${t.fmtDateTime(`${form.date} ${form.time}`)}. You will receive reminders before it starts.`);
     res.redirect('/patient/appointments');
   } catch (err) {
     if (!(err instanceof appts.BookingError)) throw err;
     res.status(400).render('patient/book', {
       title: 'Book a consultation',
-      doctors: appts.activeDoctors(),
+      doctors: await appts.activeDoctors(),
       form,
       errors: [err.message],
       minDate: t.toDate(),
@@ -89,19 +89,19 @@ router.post('/book', (req, res) => {
   }
 });
 
-router.get('/appointments', (req, res) => {
-  const list = db.all(`${APPT_SQL} ORDER BY a.scheduled_at DESC`, req.patient.id);
+router.get('/appointments', async (req, res) => {
+  const list = await db.all(`${APPT_SQL} ORDER BY a.scheduled_at DESC`, req.patient.id);
   list.forEach((a) => { a.canJoin = appts.canJoin(a); });
   res.render('patient/appointments', { title: 'My appointments', list });
 });
 
-router.post('/appointments/:id/cancel', (req, res) => {
-  const appt = appts.getFull(v.int(req.params.id));
+router.post('/appointments/:id/cancel', async (req, res) => {
+  const appt = await appts.getFull(v.int(req.params.id));
   if (!appt || appt.patient_id !== req.patient.id) return res.status(404).render('error', { title: 'Not found', message: 'Appointment not found.' });
-  if (appts.cancel(appt, v.str(req.body.reason, 200) || 'Cancelled by patient')) {
-    audit(req, 'appointment_cancelled', 'appointment', appt.id);
+  if (await appts.cancel(appt, v.str(req.body.reason, 200) || 'Cancelled by patient')) {
+    await audit(req, 'appointment_cancelled', 'appointment', appt.id);
     if (appt.doctor_id) {
-      notifyUser(appt.doctor_id, 'Appointment cancelled', `${appt.patient_name} cancelled the appointment on ${t.fmtDateTime(appt.scheduled_at)}.`, '/doctor', { email: false });
+      await notifyUser(appt.doctor_id, 'Appointment cancelled', `${appt.patient_name} cancelled the appointment on ${t.fmtDateTime(appt.scheduled_at)}.`, '/doctor', { email: false });
     }
     req.flash('success', 'Appointment cancelled. The slot is now free for someone else.');
   } else {
@@ -110,18 +110,18 @@ router.post('/appointments/:id/cancel', (req, res) => {
   res.redirect('/patient/appointments');
 });
 
-router.get('/records', (req, res) => {
-  res.render('patient/records', { title: 'My medical record', record: getRecord(req.patient.id) });
+router.get('/records', async (req, res) => {
+  res.render('patient/records', { title: 'My medical record', record: await getRecord(req.patient.id) });
 });
 
-router.get('/prescriptions/:consultationId', (req, res) => {
-  const c = db.get(
+router.get('/prescriptions/:consultationId', async (req, res) => {
+  const c = await db.get(
     `SELECT c.*, u.full_name AS doctor_name FROM consultations c JOIN users u ON u.id = c.doctor_id
       WHERE c.id = ? AND c.patient_id = ?`,
     v.int(req.params.consultationId), req.patient.id
   );
   if (!c) return res.status(404).render('error', { title: 'Not found', message: 'Prescription not found.' });
-  const items = db.all('SELECT * FROM prescriptions WHERE consultation_id = ? ORDER BY id', c.id);
+  const items = await db.all('SELECT * FROM prescriptions WHERE consultation_id = ? ORDER BY id', c.id);
   res.render('shared/prescription', { title: 'Prescription', c, items, patient: req.patient });
 });
 

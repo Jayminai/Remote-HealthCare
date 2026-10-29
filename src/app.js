@@ -4,6 +4,8 @@ const express = require('express');
 const session = require('express-session');
 const db = require('./db');
 const { SqliteStore } = require('./db/session-store');
+const { startup } = require('./db/bootstrap');
+const { runReminders } = require('./services/reminders');
 const t = require('./utils/time');
 const { MODES } = require('./services/appointments');
 const { ENTRY_TYPES, SOURCES } = require('./services/records');
@@ -24,10 +26,40 @@ function createApp() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
   app.disable('x-powered-by');
-  if (process.env.TRUST_PROXY) app.set('trust proxy', 1);
+  if (process.env.TRUST_PROXY || config.serverless) app.set('trust proxy', 1);
 
   app.use('/static', express.static(path.join(config.root, 'public'), { maxAge: '1h' }));
   app.use(securityHeaders);
+
+  // Make sure the database is ready (tables, first admin, optional demo data).
+  app.use(async (req, res, next) => {
+    await startup();
+    next();
+  });
+
+  // Called by Vercel Cron (see vercel.json). Vercel sends "Authorization: Bearer <CRON_SECRET>".
+  app.get('/cron/reminders', async (req, res) => {
+    if (!config.cronSecret || req.get('authorization') !== `Bearer ${config.cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const sent = await runReminders();
+    await db.run('DELETE FROM sessions WHERE expires < ?', Date.now());
+    res.json({ sent });
+  });
+
+  // Serverless has no always-running process, so reminders also run on normal
+  // traffic (at most once a minute per instance) as well as from the daily cron.
+  if (config.serverless) {
+    let lastRun = 0;
+    app.use(async (req, res, next) => {
+      if (Date.now() - lastRun > config.reminderIntervalMs) {
+        lastRun = Date.now();
+        await runReminders().catch((err) => console.error('Reminder run failed:', err));
+      }
+      next();
+    });
+  }
+
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(
     session({
@@ -78,19 +110,19 @@ function createApp() {
   app.use(loadUser);
 
   // Unread counters for the navigation bar.
-  app.use((req, res, next) => {
+  app.use(async (req, res, next) => {
     if (req.user) {
-      res.locals.unreadNotifications = db.get(
+      res.locals.unreadNotifications = (await db.get(
         'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL', req.user.id
-      ).n;
+      )).n;
       if (req.user.role === 'patient' || req.user.role === 'doctor') {
         const where = req.user.role === 'patient'
           ? 'patient_id = (SELECT id FROM patients WHERE user_id = ?)'
           : 'doctor_id = ?';
-        res.locals.unreadMessages = db.get(
+        res.locals.unreadMessages = (await db.get(
           `SELECT COUNT(*) AS n FROM messages WHERE ${where} AND sender_id <> ? AND read_at IS NULL`,
           req.user.id, req.user.id
-        ).n;
+        )).n;
       }
     }
     next();

@@ -11,13 +11,19 @@
     "test": "node --test"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Jayminai/Remote-HealthCare.git"
   },
-  "keywords": ["telemedicine", "healthcare", "appointments", "electronic-medical-records", "university-health-service"],
+  "keywords": [
+    "telemedicine",
+    "healthcare",
+    "appointments",
+    "electronic-medical-records",
+    "university-health-service"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -26,6 +32,7 @@
   },
   "homepage": "https://github.com/Jayminai/Remote-HealthCare#readme",
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "bcryptjs": "^3.0.3",
     "ejs": "^7.0.2",
     "express": "^5.3.0",
