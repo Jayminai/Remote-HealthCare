@@ -3,7 +3,7 @@
   const role = currentUser ? currentUser.role : null;
   const menus = {
     doctor: [
-      ['Workspace', [['/staff/doctor', 'My queue', 'fa-solid fa-list-check'], ['/staff/doctor/patients', 'Patients', 'fa-solid fa-users'], ['/staff/messages', 'Messages', 'fa-regular fa-comments', unreadMessages]]],
+      ['Workspace', [['/staff/doctor', 'My queue', 'fa-solid fa-list-check'], ['/staff/doctor/patients', 'Patients', 'fa-solid fa-users'], ['/staff/messages', 'Messages', 'fa-regular fa-comments', 'messages']]],
     ],
     nurse: [
       ['Records office', [['/staff/records', "Today's queue", 'fa-solid fa-list-check'], ['/staff/records/patients', 'Find a patient', 'fa-solid fa-magnifying-glass'], ['/staff/records/patients/new', 'Register patient', 'fa-solid fa-user-plus']]],
@@ -14,7 +14,7 @@
   }[role] || [];
   if (role) {
     menus.push(['Account', [
-      ['/staff/notifications', 'Notifications', 'fa-regular fa-bell', unreadNotifications],
+      ['/staff/notifications', 'Notifications', 'fa-regular fa-bell', 'notifications'],
       ['/staff/account/password', 'Change password', 'fa-solid fa-key'],
     ]]);
   }
@@ -22,6 +22,7 @@
   const allHrefs = menus.flatMap(([, items]) => items.map(([h]) => h));
   const activeHref = allHrefs.filter((h) => currentPath === h || currentPath.startsWith(h + '/')).sort((a, b) => b.length - a.length)[0];
   const roleNames = { doctor: 'Doctor', nurse: 'Nurse / Records', admin: 'Administrator' };
+  const badgeCounts = { messages: unreadMessages, notifications: unreadNotifications };
   const initials = currentUser ? currentUser.full_name.replace(/^(Dr|Mrs|Mr|Ms|Prof)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() : '';
 %><!doctype html>
 <html lang="en">
@@ -34,11 +35,12 @@
   <link rel="stylesheet" href="<%= asset('vendor/fontawesome/css/all.min.css') %>">
   <link rel="stylesheet" href="<%= asset('css/style.css') %>">
   <script src="<%= asset('js/app.js') %>" defer></script>
+  <% if (currentUser) { %><script src="<%= asset('js/live.js') %>" defer></script><% } %>
   <% (typeof scripts !== 'undefined' ? scripts : []).forEach((src) => { %>
   <script src="<%= src.startsWith('/static/') ? asset(src.slice(8)) : src %>" defer></script>
   <% }) %>
 </head>
-<body class="staff-body">
+<body class="staff-body <%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>"<% if (currentUser) { %> data-live="/staff/live" data-live-since="<%= lastNotificationId %>"<% } %>>
 <% if (!currentUser) { %>
 <main class="staff-auth">
 <% } else { %>
@@ -53,7 +55,7 @@
         <p class="staff-nav-heading"><%= heading %></p>
         <% items.forEach(([href, label, icon, badge]) => { %>
           <a href="<%= href %>" class="<%= href === activeHref ? 'active' : '' %>" <%- href === activeHref ? 'aria-current="page"' : '' %>>
-            <i class="<%= icon %>" aria-hidden="true"></i><span><%= label %></span><% if (badge) { %><span class="pill"><%= badge %></span><% } %>
+            <i class="<%= icon %>" aria-hidden="true"></i><span><%= label %></span><% if (badge) { %><span class="pill" data-badge="<%= badge %>" <%= badgeCounts[badge] ? '' : 'hidden' %>><%= badgeCounts[badge] %></span><% } %>
           </a>
         <% }) %>
       <% }) %>
@@ -73,7 +75,7 @@
       <div class="staff-topbar-title"><%= roleNames[role] %> workspace</div>
       <div class="staff-topbar-actions">
         <a href="/staff/notifications" class="icon-link <%= currentPath === '/staff/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
-          <i class="fa-regular fa-bell" aria-hidden="true"></i><% if (unreadNotifications) { %><span class="pill"><%= unreadNotifications %></span><% } %>
+          <i class="fa-regular fa-bell" aria-hidden="true"></i><span class="pill" data-badge="notifications" <%= unreadNotifications ? '' : 'hidden' %>><%= unreadNotifications %></span>
         </a>
         <a class="staff-user" href="/staff/account/password" title="Account">
           <span class="avatar" aria-hidden="true"><%= initials %></span>

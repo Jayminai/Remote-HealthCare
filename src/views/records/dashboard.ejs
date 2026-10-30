@@ -4,31 +4,31 @@
   const pct = totals.total ? Math.round(((totals.digitised || 0) / totals.total) * 100) : 0;
 %>
 <div class="page-head">
-  <div><h1>Records office</h1><span class="muted"><%= t.fmtDate(t.toDate()) %></span></div>
+  <div><h1><i class="fa-regular fa-folder-open h-icon" aria-hidden="true"></i>Records office</h1><span class="muted"><%= t.fmtDate(t.toDate()) %></span></div>
   <div class="row">
-    <a class="btn" href="/staff/records/patients/new">Register patient</a>
+    <a class="btn" href="/staff/records/patients/new"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register patient</a>
   </div>
 </div>
 
 <div class="stats">
-  <div class="stat"><div class="value"><%= list.filter((a) => a.status !== 'cancelled').length %></div><div class="label">Appointments today</div></div>
-  <div class="stat"><div class="value"><%= waiting %></div><div class="label">Waiting to be seen</div></div>
-  <div class="stat"><div class="value"><%= totals.total %></div><div class="label">Patients on system</div></div>
-  <div class="stat"><div class="value"><%= pct %>%</div><div class="label">Paper files digitised (<%= totals.digitised || 0 %>)</div></div>
-  <div class="stat"><div class="value"><%= totals.online || 0 %></div><div class="label">With online access</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-calendar-day" aria-hidden="true"></i></span><div class="value"><%= list.filter((a) => a.status !== 'cancelled').length %></div><div class="label">Appointments today</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></span><div class="value"><%= waiting %></div><div class="label">Waiting to be seen</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span><div class="value"><%= totals.total %></div><div class="label">Patients on system</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span><div class="value"><%= pct %>%</div><div class="label">Paper files digitised (<%= totals.digitised || 0 %>)</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-laptop-medical" aria-hidden="true"></i></span><div class="value"><%= totals.online || 0 %></div><div class="label">With online access</div></div>
 </div>
 
 <div class="card">
-  <h2>Find a patient (walk-in, phone booking, vitals)</h2>
+  <h2><i class="fa-solid fa-magnifying-glass h-icon" aria-hidden="true"></i>Find a patient (walk-in, phone booking, vitals)</h2>
   <form method="get" action="/staff/records/patients" class="row">
     <input type="search" name="q" placeholder="Name, UHS number, matric/staff number, phone or old file number" style="flex:1; min-width:220px">
-    <button class="btn" type="submit">Search</button>
+    <button class="btn" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</button>
   </form>
   <p class="muted" style="margin-top:.5rem">Always search before registering, to avoid creating a duplicate file.</p>
 </div>
 
 <div class="card">
-  <div class="card-head"><h2>Today's queue</h2></div>
+  <div class="card-head"><h2><i class="fa-solid fa-list-ol h-icon" aria-hidden="true"></i>Today's queue</h2></div>
   <% if (!list.length) { %>
     <p class="empty">No appointments today yet.</p>
   <% } else { %>
@@ -50,22 +50,22 @@
             <% if (a.status === 'booked' && a.mode === 'in_person') { %>
               <form method="post" action="/staff/records/appointments/<%= a.id %>/check-in">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="btn btn-sm" type="submit">Check in</button>
+                <button class="btn btn-sm" type="submit"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Check in</button>
               </form>
             <% } %>
             <% if (['booked', 'checked_in'].includes(a.status) && a.mode === 'in_person') { %>
-              <a class="btn btn-light btn-sm" href="/staff/patients/<%= a.patient_id %>?appointment=<%= a.id %>#vitals">Vitals</a>
+              <a class="btn btn-light btn-sm" href="/staff/patients/<%= a.patient_id %>?appointment=<%= a.id %>#vitals"><i class="fa-solid fa-heart-pulse" aria-hidden="true"></i> Vitals</a>
             <% } %>
             <% if (a.isLate) { %>
               <form method="post" action="/staff/records/appointments/<%= a.id %>/no-show" data-confirm="Mark as no-show?">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="btn btn-danger btn-sm" type="submit">No-show</button>
+                <button class="btn btn-danger btn-sm" type="submit"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i> No-show</button>
               </form>
             <% } %>
             <% if (['booked', 'checked_in'].includes(a.status)) { %>
               <form method="post" action="/staff/records/appointments/<%= a.id %>/cancel" data-confirm="Cancel this appointment? The patient will be notified.">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+                <button class="btn btn-danger btn-sm" type="submit"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cancel</button>
               </form>
             <% } %>
           </div>

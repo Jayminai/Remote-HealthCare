@@ -16,7 +16,7 @@ const db = require('./index');
 const { PASSWORDS, loadDemoData } = require('./demo-data');
 
 // Child tables first, so foreign keys are never violated.
-const TABLES = ['prescriptions', 'consultations', 'vitals', 'record_entries', 'messages', 'notifications',
+const TABLES = ['typing', 'prescriptions', 'consultations', 'vitals', 'record_entries', 'message_images', 'messages', 'notifications',
   'appointments', 'patients', 'reminders_sent', 'email_outbox', 'audit_log', 'sessions', 'users'];
 
 (async () => {

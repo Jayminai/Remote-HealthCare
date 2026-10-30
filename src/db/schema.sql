@@ -143,6 +143,26 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(patient_id, doctor_id);
 
+-- A photo sent in a conversation (e.g. a medicine the patient bought). Kept in the database because serverless
+-- hosting has no lasting file storage. The browser shrinks photos before sending, so each is small.
+CREATE TABLE IF NOT EXISTS message_images (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  message_id   INTEGER NOT NULL UNIQUE REFERENCES messages(id),
+  content_type TEXT NOT NULL,  -- image/jpeg, image/png, image/webp or image/gif
+  data         BLOB NOT NULL,
+  created_at   TEXT NOT NULL
+);
+
+-- "Typing…" indicator for an open conversation. Kept in the database (not in memory) because
+-- on serverless hosting the two people may be served by different instances.
+CREATE TABLE IF NOT EXISTS typing (
+  patient_id INTEGER NOT NULL,
+  doctor_id  INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  at         INTEGER NOT NULL,  -- milliseconds since epoch
+  PRIMARY KEY (patient_id, doctor_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS notifications (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id    INTEGER NOT NULL REFERENCES users(id),

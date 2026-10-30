@@ -1,7 +1,7 @@
 <%- include('../partials/head') %>
 <div class="page-head">
-  <h1>User accounts</h1>
-  <a class="btn" href="/staff/admin/users/new">Add staff account</a>
+  <h1><i class="fa-solid fa-users-gear h-icon" aria-hidden="true"></i>User accounts</h1>
+  <a class="btn" href="/staff/admin/users/new"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Add staff account</a>
 </div>
 <div class="card">
   <form method="get" action="/staff/admin/users" class="row" style="margin-bottom:.8rem">
@@ -12,7 +12,7 @@
         <option value="<%= k %>" <%= role === k ? 'selected' : '' %>><%= l %></option>
       <% }) %>
     </select>
-    <button class="btn btn-light btn-sm" type="submit">Filter</button>
+    <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Filter</button>
   </form>
   <div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Last sign-in</th><th>Status</th><th></th></tr></thead>
@@ -29,11 +29,11 @@
           <div class="row">
             <form method="post" action="/staff/admin/users/<%= u.id %>/toggle" data-confirm="<%= u.is_active ? 'Deactivate' : 'Activate' %> <%= u.full_name %>?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn btn-sm <%= u.is_active ? 'btn-danger' : 'btn-light' %>" type="submit"><%= u.is_active ? 'Deactivate' : 'Activate' %></button>
+              <button class="btn btn-sm <%= u.is_active ? 'btn-danger' : 'btn-light' %>" type="submit"><i class="fa-solid <%= u.is_active ? 'fa-user-slash' : 'fa-user-check' %>" aria-hidden="true"></i> <%= u.is_active ? 'Deactivate' : 'Activate' %></button>
             </form>
             <form method="post" action="/staff/admin/users/<%= u.id %>/reset-password" data-confirm="Reset the password for <%= u.full_name %>? A temporary password will be shown.">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn btn-light btn-sm" type="submit">Reset password</button>
+              <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-key" aria-hidden="true"></i> Reset password</button>
             </form>
           </div>
           <% } %>

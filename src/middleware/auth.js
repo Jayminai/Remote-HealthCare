@@ -24,9 +24,23 @@ function loginPathFor(portal) {
   return portal === 'staff' ? '/staff/login' : '/login';
 }
 
+/**
+ * Requests a page makes by itself, as opposed to user actions: live updates (they send "X-Live: 1") and the
+ * photos in a conversation, which the browser loads as they arrive.
+ */
+function isBackground(req) {
+  return req.get('x-live') === '1' || /^(\/staff)?\/messages\/\d+\/\d+\/images\/\d+$/.test(req.path);
+}
+
+/** A page the user opened (a browser asks for HTML), not something a script or image tag fetched. */
+function isPageView(req) {
+  return req.method === 'GET' && !isBackground(req) && (req.get('accept') || '').includes('text/html');
+}
+
 function requireAuth(req, res, next) {
   if (!req.user) {
-    req.session.returnTo = req.originalUrl;
+    // Return there after signing in, unless it was a script's request for data, which is no page to land on.
+    if (req.accepts(['html', 'json']) === 'html') req.session.returnTo = req.originalUrl;
     return res.redirect(loginPathFor(res.locals.portal));
   }
   // Staff-created accounts start with a temporary password that must be changed.
@@ -57,4 +71,4 @@ function homeFor(user) {
   return { patient: '/patient', doctor: '/staff/doctor', nurse: '/staff/records', admin: '/staff/admin' }[user.role] || '/';
 }
 
-module.exports = { loadUser, requireAuth, requireRole, homeFor, loginPathFor };
+module.exports = { loadUser, requireAuth, requireRole, homeFor, loginPathFor, isBackground, isPageView };

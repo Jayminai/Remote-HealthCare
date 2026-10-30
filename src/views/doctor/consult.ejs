@@ -6,12 +6,12 @@
 <%- include('../partials/head', { scripts }) %>
 <div class="page-head">
   <div>
-    <h1><%= p.full_name %></h1>
+    <h1><i class="fa-solid fa-hospital-user h-icon" aria-hidden="true"></i><%= p.full_name %></h1>
     <span class="muted"><%= p.uhs_number %> · <%= t.age(p.date_of_birth) %> yrs · <%= p.gender %> · <%- include('../partials/mode', { m: appt.mode }) %></span>
   </div>
   <div class="row">
-    <% if (remote) { %><a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener">Open call in new tab</a><% } %>
-    <a class="btn btn-light" href="/staff/patients/<%= p.id %>" target="_blank" rel="noopener">Full record</a>
+    <% if (remote) { %><a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Open call in new tab</a><% } %>
+    <a class="btn btn-light" href="/staff/patients/<%= p.id %>" target="_blank" rel="noopener"><i class="fa-regular fa-folder-open" aria-hidden="true"></i> Full record</a>
   </div>
 </div>
 
@@ -28,7 +28,7 @@
     <% } %>
 
     <div class="card">
-      <h2>Consultation notes</h2>
+      <h2><i class="fa-regular fa-pen-to-square h-icon" aria-hidden="true"></i>Consultation notes</h2>
       <%- include('../partials/errors') %>
       <form method="post" action="/staff/doctor/appointments/<%= appt.id %>/complete" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -54,7 +54,7 @@
         </div>
 
         <fieldset>
-          <legend>Prescription (if appropriate)</legend>
+          <legend><i class="fa-solid fa-prescription-bottle-medical" aria-hidden="true"></i> Prescription (if appropriate)</legend>
           <div id="rx-list">
             <% form.rx.forEach((r) => { %>
               <div class="rx-row">
@@ -63,7 +63,7 @@
                 <input type="text" name="frequency" placeholder="e.g. 8-hourly" value="<%= r.frequency %>">
                 <input type="text" name="duration" placeholder="e.g. 5 days" value="<%= r.duration %>">
                 <input type="text" name="instructions" placeholder="Instructions" value="<%= r.instructions %>">
-                <button class="btn btn-danger btn-sm" type="button" data-remove-row>✕</button>
+                <button class="btn btn-danger btn-sm" type="button" data-remove-row aria-label="Remove medicine"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
               </div>
             <% }) %>
           </div>
@@ -74,15 +74,15 @@
               <input type="text" name="frequency" placeholder="e.g. 8-hourly">
               <input type="text" name="duration" placeholder="e.g. 5 days">
               <input type="text" name="instructions" placeholder="Instructions">
-              <button class="btn btn-danger btn-sm" type="button" data-remove-row>✕</button>
+              <button class="btn btn-danger btn-sm" type="button" data-remove-row aria-label="Remove medicine"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             </div>
           </template>
-          <p><button class="btn btn-light btn-sm" type="button" id="rx-add">+ Add medicine</button>
+          <p><button class="btn btn-light btn-sm" type="button" id="rx-add"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add medicine</button>
             <span class="muted">Leave empty if no medicine is needed.</span></p>
         </fieldset>
 
         <fieldset>
-          <legend>Follow-up</legend>
+          <legend><i class="fa-regular fa-calendar" aria-hidden="true"></i> Follow-up</legend>
           <div class="form-grid">
             <div class="field">
               <label for="follow_up_date">Follow-up date <span class="hint">(optional – patient gets a reminder)</span></label>
@@ -95,14 +95,14 @@
           </div>
         </fieldset>
 
-        <button class="btn btn-accent" type="submit">Save and complete consultation</button>
+        <button class="btn btn-accent" type="submit"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Save and complete consultation</button>
       </form>
     </div>
   </div>
 
   <div>
     <div class="card">
-      <h2>Reason for visit</h2>
+      <h2><i class="fa-solid fa-comment-medical h-icon" aria-hidden="true"></i>Reason for visit</h2>
       <p><%= appt.reason %></p>
       <dl class="kv">
         <dt>Blood group</dt><dd><%= p.blood_group || '—' %></dd>
@@ -111,7 +111,7 @@
       </dl>
     </div>
     <div class="card">
-      <h2>Latest vital signs</h2>
+      <h2><i class="fa-solid fa-heart-pulse h-icon beat" aria-hidden="true"></i>Latest vital signs</h2>
       <% if (!vitals) { %>
         <p class="empty">None recorded.<% if (remote) { %> Ask the patient for any home readings.<% } %></p>
       <% } else { %>
@@ -127,7 +127,7 @@
       <% } %>
     </div>
     <div class="card">
-      <h2>Previous consultations</h2>
+      <h2><i class="fa-solid fa-clock-rotate-left h-icon" aria-hidden="true"></i>Previous consultations</h2>
       <% if (!record.consultations.length) { %>
         <p class="empty">First consultation on this system.</p>
       <% } else { %>
@@ -143,7 +143,7 @@
     </div>
     <% if (record.history.length) { %>
     <div class="card">
-      <h2>Past history (paper file)</h2>
+      <h2><i class="fa-solid fa-box-archive h-icon" aria-hidden="true"></i>Past history (paper file)</h2>
       <ul class="timeline">
         <% record.history.slice(0, 6).forEach((h) => { %>
           <li><strong><%= ENTRY_TYPES[h.entry_type] %></strong> · <small><%= t.fmtDate(h.entry_date) %></small><br><%= h.summary %></li>

@@ -4,11 +4,11 @@ const config = require('../config');
 const db = require('../db');
 const t = require('../utils/time');
 const v = require('../utils/validate');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, isPageView } = require('../middleware/auth');
 const { audit } = require('../services/audit');
 const appts = require('../services/appointments');
 const { getRecord, latestVitals } = require('../services/records');
-const { notifyPatient } = require('../services/notify');
+const { notifyPatient, markLinkRead } = require('../services/notify');
 const { searchPatients } = require('../services/patients');
 
 const router = express.Router();
@@ -36,6 +36,11 @@ router.get('/', async (req, res) => {
                a.scheduled_at`,
     `${date} %`, req.user.id
   );
+  // Notifications link to the queue with its date; today's queue is usually opened without one.
+  const canonical = `/staff/doctor?date=${date}`;
+  if (isPageView(req) && req.originalUrl !== canonical) {
+    res.locals.unreadNotifications -= (await markLinkRead(req.user.id, canonical)).changes;
+  }
   const nowStr = t.toDateTime();
   list.forEach((a) => {
     a.waitingMinutes = a.status === 'checked_in' ? t.minutesBetween(a.checked_in_at, t.now()) : null;
@@ -190,7 +195,7 @@ router.post('/appointments/:id/complete', async (req, res) => {
     `Your consultation with ${appts.doctorTitle(req.user.full_name)} is complete.` +
       (form.rx.length ? ` ${form.rx.length} prescription item(s) issued.` : '') +
       (form.follow_up_date ? ` Follow-up: ${t.fmtDate(form.follow_up_date)}.` : ''),
-    '/patient/records'
+    `/patient/records#consultation-${consultationId}`
   );
   req.flash('success', `Consultation with ${appt.patient_name} saved.`);
   res.redirect('/staff/doctor');
@@ -201,7 +206,7 @@ router.post('/appointments/:id/no-show', async (req, res) => {
   if (!appt) return notFound(res);
   if (await appts.markNoShow(appt)) {
     await audit(req, 'appointment_no_show', 'appointment', appt.id);
-    await notifyPatient(appt.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(appt.scheduled_at)}. Please book again if you still need care.`, '/patient/book');
+    await notifyPatient(appt.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(appt.scheduled_at)}. Please book again if you still need care.`, `/patient/appointments#appt-${appt.id}`);
     req.flash('success', 'Marked as no-show.');
   } else {
     req.flash('error', 'Only booked appointments whose time has passed can be marked as no-show.');

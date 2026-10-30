@@ -1,6 +1,6 @@
 <%- include('../partials/head') %>
 <div class="narrow card">
-  <h1>Add staff account</h1>
+  <h1><i class="fa-solid fa-user-plus h-icon" aria-hidden="true"></i>Add staff account</h1>
   <%- include('../partials/errors') %>
   <form method="post" action="/staff/admin/users/new" novalidate>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -13,7 +13,7 @@
     <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" name="phone" value="<%= form.phone || '' %>"></div>
     <div class="field"><label for="specialty">Specialty <span class="hint">(doctors only)</span></label><input id="specialty" type="text" name="specialty" value="<%= form.specialty || '' %>" placeholder="e.g. General Practice"></div>
     <p class="muted">A temporary password will be generated. The staff member must change it at first sign-in.</p>
-    <button class="btn" type="submit">Create account</button>
+    <button class="btn" type="submit"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Create account</button>
   </form>
 </div>
 <%- include('../partials/foot') %>

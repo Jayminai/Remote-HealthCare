@@ -1,34 +1,40 @@
 <%- include('../partials/head') %>
 <% const isPatient = currentUser.role === 'patient'; %>
-<div class="page-head"><h1>Secure messages</h1></div>
+<% const initialsOf = (name) => name.replace(/^(Dr|Mrs|Mr|Ms|Prof)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase(); %>
+<div class="page-head"><h1><i class="fa-regular fa-comments h-icon" aria-hidden="true"></i>Secure messages</h1></div>
 
-<div class="split">
-  <div class="card">
+<%# On phones the page stays put like a messaging app and only the list scrolls (see .chat-screen in style.css). %>
+<div class="split chat-list-screen">
+  <%# Refreshed in place when a new message arrives (public/js/live.js). %>
+  <div class="card chat-list-card" id="thread-list" data-live-refresh="messages">
     <% if (!threads.length) { %>
       <p class="empty">No conversations yet.</p>
     <% } else { %>
-      <div class="table-wrap"><table>
-        <thead><tr><th><%= isPatient ? 'Doctor' : 'Patient' %></th><th>Last message</th><th>When</th></tr></thead>
-        <tbody>
-        <% threads.forEach((th) => { %>
-          <tr>
-            <td>
-              <a href="<%= base %>/messages/<%= th.patient_id %>/<%= th.doctor_id %>"><%= isPatient ? th.doctor_name : th.patient_name %></a>
-              <% if (th.unread) { %><span class="pill"><%= th.unread %></span><% } %>
-              <% if (!isPatient) { %><br><small><%= th.uhs_number %></small><% } %>
-            </td>
-            <td><%= th.last_body.length > 80 ? th.last_body.slice(0, 80) + '…' : th.last_body %></td>
-            <td><small><%= t.fmtDateTime(th.last_at) %></small></td>
-          </tr>
+      <ul class="chat-list">
+        <% threads.forEach((th) => { const name = isPatient ? th.doctor_name : th.patient_name; %>
+          <li>
+            <a class="chat-item <%= th.unread ? 'unread' : '' %>" href="<%= base %>/messages/<%= th.patient_id %>/<%= th.doctor_id %>">
+              <span class="avatar" aria-hidden="true"><%= initialsOf(name) %></span>
+              <span class="chat-item-main">
+                <span class="chat-item-top">
+                  <strong><%= name %></strong>
+                  <small title="<%= t.fmtDateTime(th.last_at) %>"><%= t.fmtShort(th.last_at) %></small>
+                </span>
+                <span class="chat-item-bottom">
+                  <span class="chat-item-preview"><% if (!isPatient) { %><%= th.uhs_number %> · <% } %><% if (th.last_body) { %><%= th.last_body %><% } else { %><i class="fa-regular fa-image" aria-hidden="true"></i> Photo<% } %></span>
+                  <% if (th.unread) { %><span class="pill" data-unread-tag aria-label="<%= th.unread %> unread"><%= th.unread %></span><% } %>
+                </span>
+              </span>
+            </a>
+          </li>
         <% }) %>
-        </tbody>
-      </table></div>
+      </ul>
     <% } %>
   </div>
 
   <div class="card">
     <% if (isPatient) { %>
-      <h2>Start a conversation</h2>
+      <h2><i class="fa-regular fa-pen-to-square h-icon" aria-hidden="true"></i>Start a conversation</h2>
       <% if (!doctors.length) { %>
         <p class="muted">You can message a doctor after you have had an appointment with them.</p>
       <% } else { %>
@@ -40,7 +46,7 @@
       <% } %>
       <p class="muted">Messages are for non-urgent questions. Doctors usually reply within one working day.</p>
     <% } else { %>
-      <h2>Message a patient</h2>
+      <h2><i class="fa-regular fa-comment-dots h-icon" aria-hidden="true"></i>Message a patient</h2>
       <p class="muted">Open a patient's record from <a href="/staff/doctor/patients">Patients</a> and choose "Message patient".</p>
     <% } %>
   </div>

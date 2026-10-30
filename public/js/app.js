@@ -1,11 +1,12 @@
 // Small progressive enhancements used across the site.
 // (No inline scripts are used, so the Content Security Policy can block them.)
+// Listeners are attached to the document (not to each element), so they keep working for parts of the
+// page that live.js replaces with fresh copies from the server.
 document.addEventListener('DOMContentLoaded', () => {
   // Ask for confirmation before destructive actions: <form data-confirm="Are you sure?">
-  document.querySelectorAll('form[data-confirm]').forEach((form) => {
-    form.addEventListener('submit', (e) => {
-      if (!window.confirm(form.dataset.confirm)) e.preventDefault();
-    });
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();
   });
 
   // Show a spinner on the button that sent a form, and stop double submissions while the page loads.
@@ -30,8 +31,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Print buttons: <button data-print>
-  document.querySelectorAll('[data-print]').forEach((btn) => btn.addEventListener('click', () => window.print()));
+  // Print buttons: <button data-print>, and reveal-on-click panels: <button data-toggle="#id">
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-print]')) window.print();
+    const toggle = e.target.closest('[data-toggle]');
+    if (toggle) {
+      const target = document.querySelector(toggle.dataset.toggle);
+      if (target) target.hidden = !target.hidden;
+    }
+  });
+
+  // Phones: each table row is shown as a small card, so nothing needs sideways scrolling. Every cell is
+  // labelled with its column heading (shown by the CSS in place of the hidden header row).
+  const labelTables = (root) => {
+    root.querySelectorAll('.table-wrap table').forEach((table) => {
+      const heads = [...table.querySelectorAll('thead th')].map((th) => th.textContent.trim());
+      table.classList.add(heads.length ? 'stack' : 'stack-plain');
+      table.querySelectorAll('tbody tr').forEach((tr) => {
+        [...tr.children].forEach((cell, i) => { if (heads[i] && cell.colSpan === 1) cell.dataset.label = heads[i]; });
+      });
+    });
+  };
+  labelTables(document);
+  document.addEventListener('content:replaced', (e) => labelTables(e.detail));
 
   // Keep message threads scrolled to the newest message.
   const thread = document.querySelector('.thread');
@@ -61,12 +83,4 @@ document.addEventListener('DOMContentLoaded', () => {
     backdrop.addEventListener('click', () => setOpen(false));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
   }
-
-  // Reveal-on-click panels: <button data-toggle="#id">
-  document.querySelectorAll('[data-toggle]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const target = document.querySelector(btn.dataset.toggle);
-      if (target) target.hidden = !target.hidden;
-    });
-  });
 });

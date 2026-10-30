@@ -1,12 +1,12 @@
 ﻿<%# Read-only sections of a medical record. Needs: record, showClinical, prescriptionLinks %>
 <% if (showClinical) { %>
 <div class="card">
-  <div class="card-head"><h2>Consultations</h2><span class="muted"><%= record.consultations.length %> on file</span></div>
+  <div class="card-head"><h2><i class="fa-solid fa-stethoscope h-icon" aria-hidden="true"></i>Consultations</h2><span class="muted"><%= record.consultations.length %> on file</span></div>
   <% if (!record.consultations.length) { %>
     <p class="empty">No consultations recorded yet.</p>
   <% } %>
   <% record.consultations.forEach((c) => { %>
-    <div style="border-top:1px solid var(--border); padding-top:.8rem; margin-top:.8rem">
+    <div class="consultation-entry" id="consultation-<%= c.id %>" style="border-top:1px solid var(--border); padding-top:.8rem; margin-top:.8rem">
       <div class="card-head" style="margin-bottom:.3rem">
         <h3 style="margin:0"><%= c.diagnosis %></h3>
         <span class="row"><% if (c.mode) { %><%- include('mode', { m: c.mode }) %><% } %><small><%= t.fmtDateTime(c.created_at) %> · <%= c.doctor_name %></small></span>
@@ -27,7 +27,7 @@
           <% }) %>
           </tbody>
         </table></div>
-        <% if (prescriptionLinks) { %><p style="margin-top:.5rem"><a class="btn btn-light btn-sm" href="/patient/prescriptions/<%= c.id %>">View / print prescription</a></p><% } %>
+        <% if (prescriptionLinks) { %><p style="margin-top:.5rem"><a class="btn btn-light btn-sm" href="/patient/prescriptions/<%= c.id %>"><i class="fa-solid fa-prescription-bottle-medical" aria-hidden="true"></i> View / print prescription</a></p><% } %>
       <% } %>
     </div>
   <% }) %>
@@ -36,7 +36,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h2>Vital signs</h2>
+    <h2><i class="fa-solid fa-heart-pulse h-icon beat" aria-hidden="true"></i>Vital signs</h2>
     <% if (!record.vitals.length) { %>
       <p class="empty">No vital signs recorded.</p>
     <% } else { %>
@@ -58,7 +58,7 @@
   </div>
 
   <div class="card" id="history">
-    <h2>Past history</h2>
+    <h2><i class="fa-solid fa-clock-rotate-left h-icon" aria-hidden="true"></i>Past history</h2>
     <% if (!record.history.length) { %>
       <p class="empty">No past history captured.</p>
     <% } else { %>

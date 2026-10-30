@@ -71,6 +71,17 @@ function fmtDateTime(str) {
   return `${fmtDate(str)}, ${String(str).slice(11, 16)}`;
 }
 
+/** Short form for lists, like a chat app: '09:20' today, 'Yesterday', then '29 Oct' (or '29 Oct 2025' in another year). */
+function fmtShort(str) {
+  const d = parse(str);
+  if (!d || isNaN(d)) return '';
+  const day = String(str).slice(0, 10);
+  if (day === toDate()) return String(str).slice(11, 16);
+  if (day === toDate(addDays(new Date(), -1))) return 'Yesterday';
+  const year = d.getFullYear() === new Date().getFullYear() ? '' : ` ${d.getFullYear()}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}${year}`;
+}
+
 function age(dob) {
   const d = parse(dob);
   if (!d) return '';
@@ -82,5 +93,5 @@ function age(dob) {
 
 module.exports = {
   toDate, toDateTime, now, parse, addMinutes, addDays, isValidDate,
-  timeToMinutes, minutesToTime, minutesBetween, fmtDate, fmtDateTime, age,
+  timeToMinutes, minutesToTime, minutesBetween, fmtDate, fmtDateTime, fmtShort, age,
 };

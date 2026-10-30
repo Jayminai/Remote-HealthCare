@@ -1,11 +1,11 @@
 <%- include('../partials/head') %>
 <div class="page-head">
-  <h1>My profile</h1>
-  <a class="btn btn-light" href="/account/password">Change password</a>
+  <h1><i class="fa-regular fa-circle-user h-icon" aria-hidden="true"></i>My profile</h1>
+  <a class="btn btn-light" href="/account/password"><i class="fa-solid fa-key" aria-hidden="true"></i> Change password</a>
 </div>
 <div class="grid grid-2">
   <div class="card">
-    <h2>Registration details</h2>
+    <h2><i class="fa-regular fa-id-card h-icon" aria-hidden="true"></i>Registration details</h2>
     <dl class="kv">
       <dt>UHS number</dt><dd><strong><%= patient.uhs_number %></strong></dd>
       <dt>Name</dt><dd><%= patient.full_name %></dd>
@@ -17,7 +17,7 @@
     <p class="muted" style="margin-top:1rem">To correct your name, date of birth or ID number, please visit the UHS records office.</p>
   </div>
   <div class="card">
-    <h2>Contact details</h2>
+    <h2><i class="fa-regular fa-address-book h-icon" aria-hidden="true"></i>Contact details</h2>
     <%- include('../partials/errors') %>
     <form method="post" action="/account/profile" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -37,7 +37,7 @@
         <label for="emergency_contact_phone">Emergency contact phone</label>
         <input id="emergency_contact_phone" type="tel" name="emergency_contact_phone" value="<%= patient.emergency_contact_phone || '' %>">
       </div>
-      <button class="btn" type="submit">Save changes</button>
+      <button class="btn" type="submit"><i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Save changes</button>
     </form>
   </div>
 </div>

@@ -1,10 +1,10 @@
 <%- include('../partials/head', { scripts: [`https://${jitsiDomain}/external_api.js`, '/static/js/consult.js'] }) %>
 <div class="page-head">
   <div>
-    <h1><%= MODES[appt.mode] %> with <%= appt.doctor_name || 'a UHS doctor' %></h1>
+    <h1><i class="fa-solid <%= appt.mode === 'audio' ? 'fa-phone' : 'fa-video' %> h-icon" aria-hidden="true"></i><%= MODES[appt.mode] %> with <%= appt.doctor_name || 'a UHS doctor' %></h1>
     <span class="muted"><%= t.fmtDateTime(appt.scheduled_at) %> · <%- include('../partials/status', { s: appt.status }) %></span>
   </div>
-  <a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener">Open in new tab</a>
+  <a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i> Open in new tab</a>
 </div>
 
 <div class="split">
@@ -19,7 +19,7 @@
   </div>
   <div>
     <div class="card">
-      <h2>Before you start</h2>
+      <h2><i class="fa-solid fa-list-check h-icon" aria-hidden="true"></i>Before you start</h2>
       <ul>
         <li>Allow your browser to use your <%= appt.mode === 'video' ? 'camera and microphone' : 'microphone' %>.</li>
         <li>Find a quiet, private place with good network signal.</li>
@@ -28,7 +28,7 @@
       </ul>
     </div>
     <div class="card">
-      <h2>Your reason for visit</h2>
+      <h2><i class="fa-solid fa-comment-medical h-icon" aria-hidden="true"></i>Your reason for visit</h2>
       <p><%= appt.reason %></p>
     </div>
     <div class="alert alert-info">

@@ -1,29 +1,25 @@
 <%- include('../partials/head') %>
 <div class="page-head">
-  <h1>My appointments</h1>
-  <a class="btn" href="/patient/book">Book a consultation</a>
+  <h1><i class="fa-solid fa-calendar-check h-icon" aria-hidden="true"></i>My appointments</h1>
+  <a class="btn" href="/patient/book"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i> Book a consultation</a>
 </div>
-<div class="card">
+<div class="card" id="my-appointments" data-live-refresh="notifications">
   <% if (!list.length) { %>
     <p class="empty">You have not booked any appointments yet.</p>
   <% } else { %>
-  <div class="table-wrap"><table>
+  <div class="table-wrap"><table class="appt-cards">
     <thead><tr><th>When</th><th>Type</th><th>Doctor</th><th>Reason</th><th>Status</th><th></th></tr></thead>
     <tbody>
     <% list.forEach((a) => { %>
-      <tr>
-        <td><%= t.fmtDateTime(a.scheduled_at) %></td>
-        <td><%- include('../partials/mode', { m: a.mode }) %></td>
-        <td><%= a.doctor_name || 'Next available' %></td>
-        <td><%= a.reason %><% if (a.cancel_reason && a.status === 'cancelled') { %><br><small><%= a.cancel_reason %></small><% } %></td>
-        <td><%- include('../partials/status', { s: a.status }) %></td>
-        <td>
+      <tr id="appt-<%= a.id %>">
+        <%- include('../partials/appt_cells', { a, showReason: true }) %>
+        <td class="ac-actions">
           <div class="row">
-            <% if (a.canJoin) { %><a class="btn btn-accent btn-sm" href="/consult/<%= a.id %>">Join</a><% } %>
+            <% if (a.canJoin) { %><a class="btn btn-accent btn-sm btn-live" href="/consult/<%= a.id %>"><i class="fa-solid fa-video" aria-hidden="true"></i> Join</a><% } %>
             <% if (a.status === 'booked') { %>
               <form method="post" action="/patient/appointments/<%= a.id %>/cancel" data-confirm="Cancel this appointment?">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
+                <button class="btn btn-danger btn-sm" type="submit"><i class="fa-solid fa-xmark" aria-hidden="true"></i> Cancel</button>
               </form>
             <% } %>
           </div>

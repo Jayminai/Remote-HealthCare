@@ -49,6 +49,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-wrap: break-word; /* long words, emails and links wrap instead of widening the page */
 }
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
@@ -104,6 +105,7 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.2rem 0; }
 .header-cta:hover { background: var(--primary); text-decoration: none; }
 .header-cta i { font-size: .8rem; }
 .nav-toggle { display: none; background: var(--primary-soft); color: var(--primary); border: 0; width: 44px; height: 44px; border-radius: 12px; font-size: 1.15rem; cursor: pointer; margin-left: auto; }
+.pill[hidden] { display: none; }
 .pill { background: var(--accent-strong); color: #fff; border-radius: 999px; font-size: .7rem; padding: .05rem .42rem; margin-left: .3rem; font-weight: 700; line-height: 1.5; }
 
 @media (max-width: 1100px) {
@@ -131,6 +133,15 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.2rem 0; }
   .header-actions { gap: .4rem; }
   .user-box .avatar { display: none; }
   .icon-link, .nav-toggle { width: 40px; height: 40px; }
+  .signout { width: 38px; height: 38px; }
+}
+/* Small phones: keep the logo, notifications, sign-out and menu button on one row. */
+@media (max-width: 400px) {
+  .site-header .wrap { column-gap: .5rem; }
+  .brand { gap: .45rem; min-width: 0; flex-shrink: 1; }
+  .brand-text { min-width: 0; }
+  .brand-text strong { font-size: .98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .logo { width: 36px; height: 36px; }
 }
 
 /* ---- Layout ---- */
@@ -265,11 +276,43 @@ tr:last-child td { border-bottom: 0; }
 td a { font-weight: 500; }
 td .row form { margin: 0; }
 .empty { color: var(--muted); text-align: center; padding: 1.6rem; }
-/* Phones: tables scroll sideways inside their frame instead of squeezing every column. */
+/* Rows a notification links to (e.g. #appt-12) are highlighted when opened. */
+tr:target, .consultation-entry:target { background: var(--primary-soft); scroll-margin-top: 6rem; }
+tr:target td { background: var(--primary-soft); }
+/* Phones: every table row becomes a small card with each value under its column name (labels are set
+   by app.js), so nothing has to be scrolled sideways. Without JavaScript the table scrolls in its frame. */
 @media (max-width: 700px) {
-  .table-wrap table { min-width: 620px; }
-  .table-wrap td:first-child { white-space: nowrap; }
   .card { padding: 1.2rem 1.1rem; }
+  .table-wrap table:not(.stack):not(.stack-plain) { min-width: 620px; }
+  .table-wrap:has(> table.stack), .table-wrap:has(> table.stack-plain) { overflow: visible; border: 0; border-radius: 0; }
+  table.stack, table.stack tbody, table.stack tr, table.stack td,
+  table.stack-plain, table.stack-plain tbody, table.stack-plain tr, table.stack-plain td { display: block; width: 100%; }
+  table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.stack tr, table.stack-plain tr { border: 1px solid var(--border); border-radius: 14px; padding: .3rem .95rem; margin-bottom: .75rem; background: var(--card); }
+  table.stack tr:last-child, table.stack-plain tr:last-child { margin-bottom: 0; }
+  table.stack td, table.stack-plain td { border: 0; border-bottom: 1px solid var(--border); padding: .55rem 0; overflow-wrap: anywhere; }
+  table.stack td:last-child, table.stack-plain td:last-child { border-bottom: 0; }
+  table.stack td[data-label]::before { content: attr(data-label); display: block; font-size: .7rem; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin-bottom: .1rem; }
+  table.stack td.empty { text-align: center; }
+  table.stack td:empty { display: none; }
+}
+/* The patient's appointments: an icon per line instead of column names on phones, the date in bold and the
+   status centred underneath. On wider screens the icons are hidden and it is an ordinary table. */
+.appt-cards .ac-icon { display: none; }
+@media (max-width: 700px) {
+  table.stack.appt-cards tr { padding: 1rem 1.15rem .95rem; border-radius: 18px; background: #fbfcff; }
+  table.stack.appt-cards td { display: flex; align-items: center; gap: .85rem; border: 0; padding: .3rem 0; font-size: 1.05rem; color: var(--heading); }
+  table.stack.appt-cards td::before { display: none; }
+  table.stack.appt-cards .ac-icon { display: inline-flex; justify-content: center; flex: 0 0 1.6rem; font-size: 1.3rem; color: #6b7385; }
+  table.stack.appt-cards .ac-when { font-weight: 700; font-size: 1.12rem; }
+  table.stack.appt-cards .ac-mode .badge i { display: none; } /* the line already starts with this icon */
+  table.stack.appt-cards .ac-mode .badge { background: none; padding: 0; font-size: 1.05rem; font-weight: 400; color: var(--muted); white-space: normal; }
+  table.stack.appt-cards .ac-reason { font-size: .95rem; color: var(--muted); align-items: flex-start; }
+  table.stack.appt-cards .ac-reason .ac-icon { font-size: 1.1rem; margin-top: .15rem; }
+  table.stack.appt-cards .ac-status, table.stack.appt-cards .ac-actions { justify-content: center; padding-top: .55rem; }
+  table.stack.appt-cards .ac-status .badge { font-size: .95rem; padding: .4rem 1.3rem; }
+  table.stack.appt-cards .ac-actions .row { justify-content: center; }
+  table.stack.appt-cards .ac-actions:not(:has(a, button)) { display: none; } /* nothing to do: no gap under the status */
 }
 
 /* ---- Badges ---- */
@@ -589,6 +632,114 @@ legend { font-weight: 600; color: var(--heading); padding: 0 .4rem; font-size: .
 .msg .body { white-space: pre-wrap; }
 .msg.mine { align-self: flex-end; background: var(--primary); color: #fff; border-radius: 18px 18px 4px 18px; }
 .msg .meta { display: block; font-size: .72rem; opacity: .75; margin-top: .25rem; }
+@media (max-width: 520px) { .msg { max-width: 88%; } }
+.chat-head { justify-content: flex-start; flex-wrap: nowrap; }
+.chat-title { min-width: 0; }
+.chat-title h1 { overflow-wrap: anywhere; }
+.chat-composer { margin-top: 1rem; }
+.chat-composer .alert { margin-bottom: .6rem; }
+.chat-input { display: flex; align-items: flex-end; gap: .5rem; }
+.chat-input textarea { flex: 1; min-height: 46px; max-height: 160px; resize: none; border-radius: 22px; padding: .7rem 1rem; line-height: 1.4; }
+.chat-send { flex-shrink: 0; border-radius: 999px; min-height: 46px; }
+.chat-attach { flex-shrink: 0; width: 46px; height: 46px; padding: 0; justify-content: center; border-radius: 50%; font-size: 1.1rem; }
+.chat-attach[hidden] { display: none; }
+/* Photos in messages and the one waiting to be sent. */
+.msg-photo { display: block; margin: -.2rem -.45rem .35rem; }
+.msg-photo img { display: block; width: 100%; max-width: 260px; max-height: 320px; object-fit: cover; border-radius: 12px; background: rgba(0, 0, 0, .06); }
+.chat-attachment { position: relative; display: inline-block; margin-bottom: .5rem; }
+.chat-attachment[hidden] { display: none; }
+.chat-attachment img { display: block; max-height: 110px; max-width: 160px; border-radius: 12px; border: 1px solid var(--border); }
+.chat-attachment-remove { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--heading); color: #fff; cursor: pointer; font-size: .8rem; }
+.chat-hint { display: block; margin-top: .45rem; font-size: .78rem; }
+
+/* The messages and conversation pages fill the screen like a messaging app. The page itself does not scroll;
+   the header and the message box stay in place and only the messages (or the list of conversations) scroll. */
+body.chat-screen { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+body.chat-screen .site-footer, body.chat-screen .staff-footer { display: none; }
+body.chat-screen main.container { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 1.2rem; }
+body.chat-screen .staff-shell { height: 100vh; height: 100dvh; min-height: 0; }
+body.chat-screen .staff-main { min-height: 0; height: 100%; }
+body.chat-screen .staff-content { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+body.chat-screen .alert[role=status] { flex-shrink: 0; }
+body.chat-screen .page-head { flex-shrink: 0; }
+body.chat-screen .chat-card { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; margin-bottom: 0; }
+body.chat-screen .thread { flex: 1; min-height: 0; max-height: none; overscroll-behavior: contain; }
+body.chat-screen .typing, body.chat-screen .chat-composer, body.chat-screen .chat-notice { flex-shrink: 0; }
+body.chat-screen .chat-list-screen { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+body.chat-screen .chat-list-screen > .card { margin: 0; }
+body.chat-screen .thread { min-height: 160px; }
+/* Too short to fit a fixed screen (a phone on its side, a small window): the page scrolls as usual. */
+@media (max-height: 520px) {
+  body.chat-screen, body.chat-screen .staff-shell, body.chat-screen .staff-main { height: auto; overflow: visible; }
+  body.chat-screen .thread { flex: none; max-height: 70vh; }
+  body.chat-screen .chat-list-screen { overflow: visible; }
+}
+/* Phones: a slimmer header, icon-only buttons and every pixel for the messages. */
+@media (max-width: 700px) {
+  body.chat-screen .top-info { display: none; }
+  body.chat-screen main.container, body.chat-screen .staff-content { padding: .7rem 1rem; }
+  body.chat-screen .alert[role=status] { margin-bottom: .6rem; }
+  body.chat-screen .page-head { flex-wrap: nowrap; margin-bottom: .7rem; padding: .75rem .9rem; gap: .75rem; }
+  body.chat-screen .page-head h1 { font-size: 1.15rem; margin: 0; }
+  body.chat-screen .page-head .muted { font-size: .8rem; }
+  .chat-back { flex-shrink: 0; width: 40px; height: 40px; padding: 0; justify-content: center; border-radius: 50%; }
+  .chat-back span, .chat-send span { display: none; }
+  .chat-send { width: 46px; padding: 0; justify-content: center; }
+  .chat-input { gap: .4rem; }
+  .chat-attach { width: 42px; height: 42px; margin-bottom: 2px; }
+  body.chat-screen .chat-card { padding: .5rem .5rem .6rem; }
+  body.chat-screen .typing { margin-top: .3rem; }
+  body.chat-screen .chat-composer, body.chat-screen .chat-notice { margin: .5rem 0 0; }
+  body.chat-screen .chat-input textarea { font-size: 16px; } /* 16px stops phones zooming in on focus */
+  body.chat-screen .chat-list-screen { gap: .8rem; }
+}
+.typing { margin: .6rem .4rem 0; font-size: .85rem; color: var(--muted); display: flex; align-items: center; gap: .45rem; }
+.typing[hidden] { display: none; }
+.typing-dots { display: inline-flex; gap: 3px; background: #f1f4fb; border-radius: 999px; padding: .45rem .6rem; }
+.typing-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: typing-dot 1.2s infinite ease-in-out; }
+.typing-dots i:nth-child(2) { animation-delay: .15s; }
+.typing-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes typing-dot { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .typing-dots i { animation: none; } }
+
+/* ---- Lists you tap to open: notifications and conversations ---- */
+.card ul.notice-list, .card ul.chat-list { list-style: none; margin: -.4rem -.6rem; padding: 0; }
+.card ul.notice-list li, .card ul.chat-list li { margin: 0; border-bottom: 1px solid var(--border); }
+.card ul.notice-list li:last-child, .card ul.chat-list li:last-child { border-bottom: 0; }
+.notice, .chat-item { display: flex; align-items: center; gap: .85rem; padding: .85rem .6rem; border-radius: 12px; color: var(--text); text-decoration: none; }
+a.notice:hover, .chat-item:hover { background: #f5f7ff; text-decoration: none; }
+a.notice:active, .chat-item:active { background: var(--primary-soft); }
+.notice-text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: .15rem; }
+.notice-text strong { color: var(--heading); }
+.notice-title { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .45rem; }
+.notice.unread .notice-text strong { color: var(--primary-dark); }
+/* Unread notifications and conversations: tinted, with a "New" tag or the unread count. */
+.notice.unread, .chat-item.unread { background: #eef1ff; box-shadow: inset 3px 0 0 var(--primary); }
+a.notice.unread:hover, .chat-item.unread:hover { background: #e5e9ff; }
+.tag-new { display: inline-block; padding: .08rem .5rem; border-radius: 999px; background: var(--primary); color: #fff; font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; line-height: 1.5; }
+.chat-item.unread strong { color: var(--primary-dark); }
+.notice-go { color: var(--muted); font-size: .85rem; flex-shrink: 0; }
+.chat-item .avatar { width: 46px; height: 46px; background: var(--primary-soft); color: var(--primary); }
+.chat-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.chat-item-top, .chat-item-bottom { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.chat-item-top strong { color: var(--heading); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item-top small { flex-shrink: 0; font-size: .74rem; }
+.chat-item-preview { color: var(--muted); font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chat-item.unread .chat-item-preview { color: var(--heading); font-weight: 500; }
+.chat-item.unread .chat-item-top small { color: var(--accent-strong); font-weight: 600; }
+.chat-item .pill { flex-shrink: 0; margin: 0; }
+
+/* Pop-up for notifications that arrive while a page is open (public/js/live.js). */
+.live-toasts { position: fixed; right: 1rem; bottom: 1rem; z-index: 200; display: flex; flex-direction: column; gap: .6rem; width: min(360px, calc(100vw - 2rem)); }
+.live-toast { display: flex; align-items: flex-start; gap: .25rem; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent-strong); border-radius: 14px; box-shadow: var(--shadow-lg); animation: toast-in .25s ease-out; }
+.live-toast a { flex: 1; min-width: 0; display: flex; gap: .7rem; padding: .8rem .2rem .8rem .9rem; color: var(--heading); text-decoration: none; }
+.live-toast a > i { color: var(--primary); margin-top: .2rem; }
+.live-toast a span { min-width: 0; display: flex; flex-direction: column; }
+.live-toast small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.live-toast-close { background: none; border: 0; color: var(--muted); padding: .7rem .8rem; cursor: pointer; font-size: 1rem; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .live-toast { animation: none; } }
+@media print { .live-toasts { display: none; } }
 
 /* ---- Consultation ---- */
 .video-box { background: #0d1630; border-radius: var(--radius); overflow: hidden; height: 62vh; min-height: 380px; color: #cfd8e3; display: flex; align-items: center; justify-content: center; text-align: center; box-shadow: var(--shadow-lg); }
@@ -683,6 +834,84 @@ legend { font-weight: 600; color: var(--heading); padding: 0 .4rem; font-size: .
 .rx-sheet { max-width: 760px; margin: 0 auto; }
 .rx-sheet .rx-head { border-bottom: 2px solid var(--primary); padding-bottom: .6rem; margin-bottom: 1rem; display: flex; align-items: center; gap: .9rem; }
 .rx-sheet .rx-head img { border-radius: 8px; flex: 0 0 auto; }
+/* ---- Icons ----
+   Font Awesome (public/vendor). Headings get a small tile, buttons a leading icon, and live states (waiting,
+   in progress, new notifications, a call you can join) move a little. Everything that moves is under
+   prefers-reduced-motion: no-preference at the end of this section, so it stays still for people who ask for that. */
+.h-icon { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 2rem; height: 2rem; margin-right: .6rem; border-radius: 10px; background: var(--primary-soft); color: var(--primary); font-size: .92rem; vertical-align: -.4rem; transition: transform .3s ease; }
+h1:has(> .h-icon), h2:has(> .h-icon) { display: flex; align-items: center; } /* long titles wrap beside the icon */
+.card-head:has(> a:last-child) { flex-wrap: nowrap; }
+.card-head > a:last-child { flex-shrink: 0; white-space: nowrap; }
+.card-head h2 { min-width: 0; }
+.card:hover h2 > .h-icon { transform: rotate(-6deg) scale(1.06); }
+.page-head .h-icon { width: 2.6rem; height: 2.6rem; margin-right: .75rem; border-radius: 14px; font-size: 1.12rem; background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2); vertical-align: -.5rem; }
+@media (max-width: 600px) { .page-head .h-icon { width: 2.15rem; height: 2.15rem; font-size: .95rem; border-radius: 11px; vertical-align: -.4rem; } }
+body.chat-screen .page-head .h-icon { width: 2rem; height: 2rem; font-size: .9rem; vertical-align: -.35rem; }
+legend > i { color: var(--primary); margin-right: .2rem; }
+.btn i { font-size: .95em; transition: transform .2s ease; }
+.btn:hover .fa-arrow-right, .btn:hover .fa-chevron-right { transform: translateX(3px); }
+.btn:hover .fa-arrow-left, .btn:hover .fa-chevron-left { transform: translateX(-3px); }
+.btn:hover .fa-plus { transform: rotate(90deg); }
+.btn:hover .fa-magnifying-glass { transform: scale(1.15) rotate(-10deg); }
+.btn:hover .fa-print, .btn:hover .fa-floppy-disk, .btn:hover .fa-paper-plane, .btn:hover .fa-calendar-plus, .btn:hover .fa-user-plus { transform: translateY(-2px); }
+.btn:hover .fa-xmark { transform: rotate(90deg); }
+.btn:hover .fa-up-right-from-square { transform: translate(2px, -2px); }
+
+/* Menus */
+.nav-icon { margin-right: .45rem; font-size: .9em; opacity: .7; transition: transform .2s ease, opacity .2s; }
+.nav a:hover .nav-icon, .nav a.active .nav-icon { opacity: 1; transform: translateY(-1px); }
+.staff-nav a i { transition: color .2s, transform .2s ease; }
+.staff-nav a:hover i { transform: scale(1.15); }
+
+/* Figures: the icon sits in each tile's decorative circle, in the colour of its side bar. */
+.stat-icon { position: absolute; top: .8rem; right: .85rem; z-index: 1; color: var(--primary); font-size: 1.05rem; transition: transform .3s ease; }
+.stat:nth-child(4n+2) .stat-icon { color: #0b7a45; }
+.stat:nth-child(4n+3) .stat-icon { color: var(--navy-2); }
+.stat:nth-child(4n+4) .stat-icon { color: #c27c00; }
+.stat:hover .stat-icon { transform: scale(1.18) rotate(-8deg); }
+.stat .label { padding-right: .4rem; }
+
+/* Badges: consultation type and status */
+.badge i { margin-right: .12rem; font-size: .9em; }
+.status-live { display: inline-block; width: .5rem; height: .5rem; margin: 0 .2rem 0 .05rem; border-radius: 50%; background: currentColor; vertical-align: .05rem; }
+
+/* Empty lists: a quiet picture above the text. */
+.empty::before { content: "\f07c"; display: block; margin-bottom: .45rem; font: 400 1.9rem/1 "Font Awesome 6 Free"; color: #c5cbe6; }
+.thread .empty::before { content: "\f086"; }
+#notification-list .empty::before { content: "\f1f6"; }
+table.stack td.empty::before { font: 400 1.9rem/1 "Font Awesome 6 Free"; text-transform: none; letter-spacing: 0; }
+
+/* Messages: an icon for each kind. */
+.alert { position: relative; padding-left: 2.85rem; }
+.alert::before { position: absolute; left: 1rem; top: .9rem; font: 900 1.05rem/1.6 "Font Awesome 6 Free"; }
+.alert-success::before { content: "\f058"; color: var(--accent-strong); }
+.alert-error::before { content: "\f06a"; color: var(--danger); }
+.alert-info::before { content: "\f05a"; color: var(--primary); }
+.alert-warn::before { content: "\f071"; color: #e39a1c; }
+
+@keyframes bell-ring { 0%, 100% { transform: rotate(0); } 15% { transform: rotate(16deg); } 30% { transform: rotate(-14deg); } 45% { transform: rotate(10deg); } 60% { transform: rotate(-6deg); } 75% { transform: rotate(3deg); } }
+@keyframes live-ping { 0% { box-shadow: 0 0 0 0 currentColor; } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes btn-ping { 0% { box-shadow: 0 0 0 0 rgba(41, 205, 120, .55); } 70%, 100% { box-shadow: 0 0 0 10px rgba(41, 205, 120, 0); } }
+@keyframes hourglass { 0%, 40% { transform: rotate(0); } 50%, 90% { transform: rotate(180deg); } 100% { transform: rotate(360deg); } }
+@keyframes wave { 0%, 60%, 100% { transform: rotate(0); } 10%, 30% { transform: rotate(14deg); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(-4deg); } 50% { transform: rotate(10deg); } }
+@keyframes heartbeat { 0%, 40%, 100% { transform: scale(1); } 10%, 30% { transform: scale(1.18); } 20% { transform: scale(1.04); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes nudge { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-3px); } 40%, 80% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .icon-link.ring > i, .live-toast a > i { transform-origin: 50% 0; animation: bell-ring 1s ease; }
+  .status-live { animation: live-ping 1.6s ease-out infinite; }
+  .status-wait { display: inline-block; animation: hourglass 3s ease-in-out infinite; }
+  .btn-live { animation: btn-ping 2s ease-out infinite; }
+  .h-icon.wave { animation: wave 2.2s ease-in-out .4s 2; transform-origin: 70% 80%; }
+  .h-icon.beat { animation: heartbeat 2.4s ease-in-out infinite; }
+  .empty::before, .error-icon i { animation: float 3.5s ease-in-out infinite; }
+  .pill.pop { animation: pop .35s ease-out; }
+  .tag-new, .chat-item.unread .pill { animation: pop .4s ease-out; }
+  .alert-success::before { animation: pop .4s ease-out; }
+  .alert-error::before { animation: nudge .5s ease .1s; }
+}
+
 @media print {
   .top-info, .site-header, .site-footer, .staff-sidebar, .staff-topbar, .staff-footer, .no-print, .alert { display: none !important; }
   .staff-body { background: #fff; }

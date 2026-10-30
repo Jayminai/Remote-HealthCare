@@ -5,6 +5,7 @@
 const nodemailer = require('nodemailer');
 const config = require('../config');
 const db = require('../db');
+const { now } = require('../utils/time');
 
 let transporter = null;
 if (config.smtp.host) {
@@ -62,4 +63,17 @@ async function notifyPatient(patientId, title, body, link = null) {
   else if (p.email) await sendEmail(p.email, `UHS Telemedicine: ${title}`, body);
 }
 
-module.exports = { sendEmail, notifyUser, notifyPatient };
+/**
+ * Mark the user's notifications that point at `url` (path and query) as read. Used when the user
+ * reaches that page some other way than through the notification list, so the counter does not
+ * keep showing something they have already seen. Links may end in "#anchor", which is never sent
+ * to the server, so a link matches with or without one.
+ */
+async function markLinkRead(userId, url) {
+  return db.run(
+    'UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL AND (link = ? OR substr(link, 1, ?) = ?)',
+    now(), userId, url, url.length + 1, `${url}#`
+  );
+}
+
+module.exports = { sendEmail, notifyUser, notifyPatient, markLinkRead };

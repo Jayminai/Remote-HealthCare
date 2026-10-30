@@ -1,12 +1,12 @@
 <%- include('../partials/head') %>
 <div class="page-head">
-  <h1>Audit log</h1>
+  <h1><i class="fa-solid fa-clipboard-list h-icon" aria-hidden="true"></i>Audit log</h1>
   <form method="get" action="/staff/admin/audit" class="row">
     <select name="action" style="width:auto">
       <option value="">All actions</option>
       <% actions.forEach((a) => { %><option <%= a === action ? 'selected' : '' %>><%= a %></option><% }) %>
     </select>
-    <button class="btn btn-light btn-sm" type="submit">Filter</button>
+    <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Filter</button>
   </form>
 </div>
 <div class="card">

@@ -6,8 +6,13 @@
     <p>Students, staff and their dependants can book appointments online, consult a doctor by video or audio call,
       and keep their medical records safe and easy to find.</p>
     <div class="row">
-      <a class="btn btn-accent btn-lg" href="/register">Create a patient account <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-      <a class="btn btn-light btn-lg" href="/login">Sign in</a>
+      <% if (currentUser) { %>
+        <%# Staff who came from the staff portal's "Patient website" link (signed-in patients go to their dashboard). %>
+        <a class="btn btn-accent btn-lg" href="/staff">Back to the staff portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } else { %>
+        <a class="btn btn-accent btn-lg" href="/register">Create a patient account <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <a class="btn btn-light btn-lg" href="/login">Sign in</a>
+      <% } %>
     </div>
     <div class="hero-badges">
       <span><i class="fa-solid fa-video" aria-hidden="true"></i> Video &amp; audio consultations</span>
