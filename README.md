@@ -14,7 +14,7 @@ Online booking · Video & audio consultations · Electronic medical records · R
 [![EJS](https://img.shields.io/badge/Views-EJS-B4CA65?logo=ejs&logoColor=black)](https://ejs.co)
 [![Jitsi Meet](https://img.shields.io/badge/Video-Jitsi%20Meet-1D76BA?logo=jitsi&logoColor=white)](https://jitsi.org/meet)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](#%EF%B8%8F-deploying-to-vercel)
-[![Tests](https://img.shields.io/badge/tests-20%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-21%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
 [![NDPA 2023](https://img.shields.io/badge/Privacy-NDPA%202023-0b5cad)](#-security-and-privacy)
 
 [**Quick start**](#-quick-start) · [**Deploy**](#%EF%B8%8F-deploying-to-vercel) · [**Demo accounts**](#-demo-accounts) · [**Screenshots**](#-screenshots) · [**Architecture**](#-system-design) · [**Security**](#-security-and-privacy)
@@ -194,6 +194,7 @@ Each requirement from the interview maps to something you can see in the applica
 - View and cancel appointments; **Join consultation** appears 15 minutes before a remote appointment.
 - View the medical record: consultations, prescriptions (printable), vitals, history.
 - Secure messages with doctors they have seen; in-app and email notifications.
+- Confirm their email address after registering (a link valid for 24 hours, with "send a new link" and "change address" options) before booking.
 - Forgot password: a one-time reset link by email, valid for 1 hour.
 - Update contact and emergency contact details.
 </details>
@@ -426,7 +427,7 @@ The app sends email over SMTP, so [Resend](https://resend.com) works without cod
    APP_URL=https://your-site-address
    ```
 
-   `MAIL_FROM` must use the domain you verified. `APP_URL` must be the real site address, because password-reset links use it.
+   `MAIL_FROM` must use the domain you verified. `APP_URL` must be the real site address, because the password-reset and email-confirmation links use it. Without working email, new patients cannot confirm their address.
 4. Restart (or redeploy), sign in as an administrator, open **Email outbox** and press **Send me a test email**.
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | see above | First admin, created on first start if none exists. |
 | `TRUST_PROXY` | unset | Set to `1` behind a reverse proxy that handles HTTPS (automatic on Vercel). |
@@ -547,6 +548,7 @@ erDiagram
 | `email_outbox` | Every email sent (or logged). |
 | `audit_log` | Who did what and when. |
 | `sessions` | Sign-in sessions. |
+| `email_verifications` | "Confirm your email" links for self-registered patients (hash only; valid 24 hours; only the newest works). |
 | `password_resets` | One-time patient password-reset links (only a hash of each link is stored; they expire after 1 hour). |
 
 </details>
@@ -572,6 +574,7 @@ Health information is sensitive personal data under the **Nigeria Data Protectio
 | Injection / redirects | Parameterised SQL everywhere; redirects only to local paths. |
 | Call privacy | 24 random hex characters per appointment room, never reused. |
 | Email | Message emails say only that a message exists; the content stays in the system. |
+| Email ownership | Patients who register themselves must open a link sent to their email before they can use the service. Accounts created by staff, and accounts that existed before this check, count as confirmed. |
 | Identity | A self-registration matching an existing record is refused and sent to the records office, so no one can claim another person's file online. |
 
 > [!WARNING]
@@ -588,19 +591,20 @@ npm test
 ```
 
 ```
-ℹ tests 20
-ℹ pass 20
+ℹ tests 21
+ℹ pass 21
 ℹ fail 0
 ```
 
-20 automated tests run against a temporary database file that is deleted afterwards:
+21 automated tests run against a temporary database file that is deleted afterwards:
 
 - **Unit tests** ([tests/unit.test.js](tests/unit.test.js)): date handling, UHS number generation, duplicate detection (reordered names, phone formats, ID numbers), form validation, slot generation, least-busy doctor assignment, double-booking prevention (application and database level), reminders sent exactly once, safe redirects, password policy, doctor titles, transactions (rollback and nested calls).
 - **End-to-end HTTP tests** ([tests/http.test.js](tests/http.test.js)):
-  - The full patient journey: register → duplicate registration blocked → book → doctor starts and completes the consultation with a prescription → patient sees the record, prescription, follow-up message and notification → patient replies → another patient cannot read the thread.
+  - The full patient journey: register → confirm email → duplicate registration blocked → book → doctor starts and completes the consultation with a prescription → patient sees the record, prescription, follow-up message and notification → patient replies → another patient cannot read the thread.
   - Records office: registration with duplicate warning/override, walk-in, vitals (out-of-range values refused), nurse cannot see clinical notes, enabling online access with forced password change.
   - Admin: dashboard, user creation (welcome email without the password) and deactivation, test email, no access to clinical records.
   - Separate entrances: staff are refused on the patient sign-in page and patients on the staff portal; old staff addresses redirect to `/staff`.
+  - Email confirmation: self-registered patients are held on "confirm your email" (pages, messages and the booking API), the link is hidden from the outbox, only the newest link works, links expire, a mistyped address can be corrected, the link works on another device, and resending is limited.
   - Password reset: same answer for patients, staff and unknown emails; reset links hidden from the outbox; links work once, expire, and sign the account out elsewhere.
   - Security: CSRF rejection, failed-login auditing, access control redirects.
 

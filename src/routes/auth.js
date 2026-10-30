@@ -181,7 +181,8 @@ router.post('/reset-password/:token', async (req, res) => {
   }
 
   await db.tx(async () => {
-    await db.update('users', reset.user_id, { password_hash: bcrypt.hashSync(password, 10), must_change_password: 0 });
+    // Opening the emailed link also proves the address belongs to the patient.
+    await db.update('users', reset.user_id, { password_hash: bcrypt.hashSync(password, 10), must_change_password: 0, email_verified: 1 });
     await db.update('password_resets', reset.id, { used_at: t.now() });
     await db.run('DELETE FROM password_resets WHERE user_id = ? AND used_at IS NULL', reset.user_id);
     // Sign the account out everywhere, in case someone else was using it.
@@ -192,6 +193,111 @@ router.post('/reset-password/:token', async (req, res) => {
     `Hello ${reset.full_name},\n\nThe password for your UHS Telemedicine account was just changed.\n` +
     'If this was not you, contact the UHS records office straight away.\n\n' + config.clinic.name);
   req.flash('success', 'Your password has been changed. You can now sign in.');
+  res.redirect('/login');
+});
+
+// ---- Email verification (patients who register themselves) ----
+// The patient is signed in after registering, but every patient page redirects to /verify-email
+// (see requireAuth) until they open the link we email them.
+
+const VERIFY_HOURS = 24;
+const VERIFY_PER_HOUR = 5;
+
+/** Email the user a new confirmation link; earlier links stop working. */
+async function sendVerification(user) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  await db.insert('email_verifications', {
+    user_id: user.id,
+    token_hash: hashToken(token),
+    expires_at: t.toDateTime(t.addMinutes(new Date(), VERIFY_HOURS * 60), true),
+  });
+  const body = (url) => `Hello ${user.full_name},
+
+Welcome to UHS Telemedicine. Please confirm that this is your email address by opening this link
+within ${VERIFY_HOURS} hours:
+${url}
+
+You can book consultations once your email address is confirmed.
+
+If you did not create an account, ignore this email.
+
+${config.clinic.name}`;
+  await sendEmail(user.email, 'Confirm your email for UHS Telemedicine', body(`${config.appUrl}/verify-email/${token}`),
+    { outboxBody: body('[confirmation link hidden]') });
+}
+
+/** Links sent to this user in the last hour, to stop the resend button being used to flood an inbox. */
+async function recentVerifications(userId) {
+  const row = await db.get('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ? AND created_at > ?',
+    userId, t.toDateTime(t.addMinutes(new Date(), -60), true));
+  return row.n;
+}
+
+/** Only signed-in patients who still have to confirm their email use the pages below. */
+function pendingPatient(req, res, next) {
+  if (!req.user) return res.redirect('/login');
+  if (req.user.role !== 'patient' || req.user.email_verified) return res.redirect(homeFor(req.user));
+  next();
+}
+
+const renderVerify = (req, res, extra = {}) =>
+  res.render('auth/verify', { title: 'Confirm your email', state: 'pending', email: req.user?.email, newEmail: '', error: null, hours: VERIFY_HOURS, ...extra });
+
+router.get('/verify-email', pendingPatient, (req, res) => renderVerify(req, res));
+
+router.post('/verify-email/resend', pendingPatient, async (req, res) => {
+  if (await recentVerifications(req.user.id) >= VERIFY_PER_HOUR) {
+    return renderVerify(req, res.status(429), { error: 'We have sent several links already. Check your spam folder, or try again in an hour.' });
+  }
+  await sendVerification(req.user);
+  await audit(req, 'email_verification_resent', 'user', req.user.id);
+  req.flash('success', `We have sent a new link to ${req.user.email}.`);
+  res.redirect('/verify-email');
+});
+
+// A patient who mistyped their address can correct it here (until it is confirmed).
+router.post('/verify-email/change', pendingPatient, async (req, res) => {
+  const email = v.str(req.body.email, 120).toLowerCase();
+  let error = null;
+  if (!v.isEmail(email)) error = 'Enter a valid email address.';
+  else if (email === req.user.email) error = 'That is the address we already have. Use "Send a new link" instead.';
+  else if (await db.get('SELECT id FROM users WHERE email = ? AND id <> ?', email, req.user.id)) error = 'An account with this email already exists.';
+  else if (await recentVerifications(req.user.id) >= VERIFY_PER_HOUR) error = 'We have sent several links already. Try again in an hour.';
+  if (error) return renderVerify(req, res.status(400), { error, newEmail: email, showChange: true });
+
+  await db.tx(async () => {
+    await db.update('users', req.user.id, { email });
+    await db.run('UPDATE patients SET email = ?, updated_at = ? WHERE user_id = ?', email, t.now(), req.user.id);
+  });
+  await audit(req, 'email_changed_before_verification', 'user', req.user.id);
+  await sendVerification({ ...req.user, email });
+  req.flash('success', `Email address changed. We have sent a link to ${email}.`);
+  res.redirect('/verify-email');
+});
+
+// The link from the email. It works whether or not the patient is signed in on this device.
+router.get('/verify-email/:token', async (req, res) => {
+  const token = req.params.token;
+  const row = /^[A-Za-z0-9_-]{43}$/.test(token) && await db.get(
+    `SELECT e.user_id FROM email_verifications e JOIN users u ON u.id = e.user_id
+      WHERE e.token_hash = ? AND e.expires_at > ? AND u.is_active = 1
+        AND e.id = (SELECT MAX(id) FROM email_verifications WHERE user_id = e.user_id)`,
+    hashToken(token), t.now()
+  );
+  if (!row) {
+    if (req.user?.role === 'patient' && req.user.email_verified) return res.redirect(homeFor(req.user));
+    return res.status(410).render('auth/verify', { title: 'Link not valid', state: 'invalid', signedIn: Boolean(req.user), hours: VERIFY_HOURS });
+  }
+  await db.tx(async () => {
+    await db.update('users', row.user_id, { email_verified: 1 });
+    await db.run('DELETE FROM email_verifications WHERE user_id = ?', row.user_id);
+  });
+  await audit(req, 'email_verified', 'user', row.user_id);
+  if (req.user?.id === row.user_id) {
+    req.flash('success', 'Thank you, your email address is confirmed. You can now book a consultation.');
+    return res.redirect('/patient');
+  }
+  req.flash('success', 'Thank you, your email address is confirmed. Sign in to continue.');
   res.redirect('/login');
 });
 
@@ -240,6 +346,7 @@ router.post('/register', async (req, res) => {
       email: data.email,
       phone: data.phone,
       password_hash: passwordHash,
+      email_verified: 0,
     });
     const pid = await patients.createPatient({ ...data, user_id: userId }, userId);
     return { user: await db.get('SELECT * FROM users WHERE id = ?', userId), patientId: pid };
@@ -247,8 +354,8 @@ router.post('/register', async (req, res) => {
 
   await signIn(req, user);
   await audit(req, 'patient_self_registered', 'patient', patientId);
-  req.flash('success', 'Welcome! Your account has been created. You can now book a consultation.');
-  res.redirect('/patient');
+  await sendVerification(user);
+  res.redirect('/verify-email');
 });
 
 module.exports = router;

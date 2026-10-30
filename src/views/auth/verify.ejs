@@ -1,0 +1,52 @@
+<%- include('../partials/head') %>
+<div class="auth-split">
+  <div class="auth-visual">
+    <img class="auth-logo" src="/static/img/ui-logo.png" alt="University of Ibadan" width="600" height="200">
+    <h2>One last step</h2>
+    <p>Confirming your email lets us send you appointment reminders and, if you ever need it, a password reset link.</p>
+    <ul class="checks">
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> The link works for <%= hours %> hours</li>
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> We never share your email address</li>
+    </ul>
+  </div>
+  <div class="auth-form">
+    <span class="eyebrow">Patient account</span>
+    <% if (state === 'invalid') { %>
+      <h1>This link no longer works</h1>
+      <p class="muted">The link has expired, has already been used, or a newer link has been sent since.</p>
+      <% if (signedIn) { %>
+        <a class="btn" href="/verify-email">Get a new link</a>
+      <% } else { %>
+        <p class="muted">Sign in and we will offer to send you a new one.</p>
+        <a class="btn" href="/login">Sign in</a>
+      <% } %>
+    <% } else { %>
+      <h1>Confirm your email</h1>
+      <p class="muted">We have sent a link to <strong><%= email %></strong>. Open it to finish creating your account.
+        It can take a few minutes to arrive; check your spam or junk folder too.</p>
+      <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+
+      <form method="post" action="/verify-email/resend">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-block" type="submit"><i class="fa-regular fa-envelope" aria-hidden="true"></i> Send a new link</button>
+      </form>
+
+      <hr>
+      <p class="muted">Wrong email address? <button class="link-button" type="button" data-toggle="#change-email">Change it</button></p>
+      <form id="change-email" method="post" action="/verify-email/change" novalidate<%= locals.showChange ? '' : ' hidden' %>>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="email">Correct email address</label>
+          <input id="email" type="email" name="email" value="<%= newEmail %>" autocomplete="email" required>
+        </div>
+        <button class="btn btn-light btn-block" type="submit">Use this address</button>
+      </form>
+
+      <form method="post" action="/logout" class="verify-signout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="link-button" type="submit">Sign out</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

@@ -1,6 +1,7 @@
 // End-to-end tests through HTTP, covering each role's main workflow.
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const { db, t, makeUser, nextClinicDay, Client } = require('./helpers');
 const { createApp } = require('../src/app');
 
@@ -47,12 +48,26 @@ test('wrong password is rejected and audited', async () => {
   assert.ok(await db.get("SELECT id FROM audit_log WHERE action = 'login_failed'"));
 });
 
+/** A confirmation link with a known token (the real one only exists in the email). */
+async function verifyLink(userId, minutes = 60) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  await db.insert('email_verifications', {
+    user_id: userId,
+    token_hash: crypto.createHash('sha256').update(token).digest('hex'),
+    expires_at: t.toDateTime(t.addMinutes(new Date(), minutes), true),
+  });
+  return `/verify-email/${token}`;
+}
+
 test('full journey: register, book, consult, prescribe, follow up', async () => {
   // 1. Patient self-registers.
   const patient = new Client(base);
   let r = await patient.post('/register', patientForm, '/register');
   assert.equal(r.status, 302, r.text.slice(0, 500));
-  assert.equal(r.location, '/patient');
+  assert.equal(r.location, '/verify-email');
+  // ...and confirms their email address with the emailed link.
+  const adaId = (await db.get("SELECT id FROM users WHERE email = 'ada@stu.ui.edu.ng'")).id;
+  assert.equal((await patient.get(await verifyLink(adaId))).location, '/patient');
   assert.equal((await patient.get('/patient')).status, 200);
 
   // Registering the same person again is blocked (duplicate prevention).
@@ -129,6 +144,7 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   // Another patient cannot read this thread.
   const other = new Client(base);
   await other.post('/register', { ...patientForm, full_name: 'Bayo Other', id_number: '300200', date_of_birth: '2001-01-01', phone: '08099999999', email: 'bayo@stu.ui.edu.ng' }, '/register');
+  await other.get(await verifyLink((await db.get("SELECT id FROM users WHERE email = 'bayo@stu.ui.edu.ng'")).id));
   assert.equal((await other.get(thread)).status, 404);
 });
 
@@ -238,7 +254,6 @@ test('patients and staff sign in on separate pages', async () => {
 });
 
 test('patient resets a forgotten password by email', async () => {
-  const crypto = require('node:crypto');
   const userId = await makeUser('patient', 'reset.me@test.ng', { full_name: 'Reset Me' });
   const signedIn = new Client(base);
   assert.equal((await signedIn.login('reset.me@test.ng')).status, 302);
@@ -282,4 +297,63 @@ test('patient resets a forgotten password by email', async () => {
     expires_at: t.toDateTime(t.addMinutes(new Date(), -1), true),
   });
   assert.equal((await c.get(`/reset-password/${old}`)).status, 410);
+});
+
+test('self-registered patients confirm their email before using the service', async () => {
+  const form = {
+    ...patientForm, full_name: 'Chidi Verify Nnamdi', id_number: '300900', date_of_birth: '2002-02-02',
+    phone: '08077777777', email: 'chidi.typo@stu.ui.edu.ng',
+  };
+  const c = new Client(base);
+  let r = await c.post('/register', form, '/register');
+  assert.equal(r.location, '/verify-email', r.text.slice(0, 500));
+  const user = await db.get("SELECT id, email_verified FROM users WHERE email = 'chidi.typo@stu.ui.edu.ng'");
+  assert.equal(user.email_verified, 0);
+
+  // Every patient page, including shared ones and the API, waits for the confirmation.
+  for (const path of ['/patient', '/patient/book', '/messages', '/api/slots?date=2030-01-01']) {
+    assert.equal((await c.get(path)).location, '/verify-email', path);
+  }
+  const page = await c.get('/verify-email');
+  assert.equal(page.status, 200);
+  assert.match(page.text, /chidi\.typo@stu\.ui\.edu\.ng/);
+
+  // The outbox never shows the secret link.
+  const mail = await db.get("SELECT body FROM email_outbox WHERE to_email = 'chidi.typo@stu.ui.edu.ng' AND subject LIKE 'Confirm your email%'");
+  assert.match(mail.body, /\[confirmation link hidden\]/);
+  assert.doesNotMatch(mail.body, /verify-email\//);
+
+  // A mistyped address can be corrected, but not to one that is already in use.
+  r = await c.post('/verify-email/change', { email: 'doctor@test.ng' }, '/verify-email');
+  assert.equal(r.status, 400);
+  r = await c.post('/verify-email/change', { email: 'chidi@stu.ui.edu.ng' }, '/verify-email');
+  assert.equal(r.location, '/verify-email');
+  assert.equal((await db.get('SELECT email FROM users WHERE id = ?', user.id)).email, 'chidi@stu.ui.edu.ng');
+  assert.equal((await db.get('SELECT email FROM patients WHERE user_id = ?', user.id)).email, 'chidi@stu.ui.edu.ng');
+  assert.ok(await db.get("SELECT id FROM email_outbox WHERE to_email = 'chidi@stu.ui.edu.ng' AND subject LIKE 'Confirm your email%'"));
+
+  // Only the newest link works, and expired links are refused.
+  const older = await verifyLink(user.id);
+  r = await c.post('/verify-email/resend', {}, '/verify-email');
+  assert.equal(r.location, '/verify-email');
+  assert.equal((await c.get(older)).status, 410);
+  assert.equal((await c.get(await verifyLink(user.id, -1))).status, 410);
+
+  // The link works from another device too (e.g. opened on a phone while signed in on a laptop).
+  r = await new Client(base).get(await verifyLink(user.id));
+  assert.equal(r.location, '/login');
+  assert.equal((await db.get('SELECT email_verified FROM users WHERE id = ?', user.id)).email_verified, 1);
+  assert.equal((await c.get('/patient')).status, 200);
+  assert.equal((await c.get('/verify-email')).location, '/patient');
+
+  // The resend button cannot be used to flood an inbox.
+  const floodId = await makeUser('patient', 'flood@test.ng', { email_verified: 0 });
+  const f = new Client(base);
+  await f.login('flood@test.ng');
+  for (let i = 0; i < 5; i++) assert.equal((await f.post('/verify-email/resend', {}, '/verify-email')).status, 302);
+  assert.equal((await f.post('/verify-email/resend', {}, '/verify-email')).status, 429);
+  assert.equal((await db.get('SELECT COUNT(*) AS n FROM email_verifications WHERE user_id = ?', floodId)).n, 5);
+
+  // Accounts created any other way (by staff, or before this change) count as verified.
+  assert.equal((await db.get("SELECT email_verified FROM users WHERE email = 'nurse@test.ng'")).email_verified, 1);
 });

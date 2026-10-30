@@ -46,6 +46,16 @@ function ready() {
     if (!remote) await client.execute('PRAGMA journal_mode = WAL');
     await client.execute('PRAGMA foreign_keys = ON');
     await client.executeMultiple(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+    // Columns added after the first release: CREATE TABLE IF NOT EXISTS leaves existing tables as
+    // they are. Existing accounts get the default, so they count as verified.
+    const userColumns = (await client.execute('PRAGMA table_info(users)')).rows.map((r) => r.name);
+    if (!userColumns.includes('email_verified')) {
+      try {
+        await client.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1');
+      } catch (err) {
+        if (!/duplicate column/i.test(err.message)) throw err; // another instance added it first
+      }
+    }
   })().catch((err) => {
     readyPromise = null; // allow a retry on the next request
     throw err;

@@ -8,6 +8,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Show a spinner on the button that sent a form, and stop double submissions while the page loads.
+  // Runs after the confirmation check above, so a cancelled confirm leaves the button alone.
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (e.defaultPrevented || form.target) return;
+    const btn = e.submitter || form.querySelector('button[type=submit], button:not([type])');
+    if (!btn || btn.classList.contains('is-loading')) return;
+    btn.classList.add('is-loading');
+    if (!btn.textContent.trim()) btn.classList.add('is-loading-icon');
+    btn.setAttribute('aria-busy', 'true');
+    // Disable on the next tick: a disabled button is left out of the data the browser is about to send.
+    setTimeout(() => { btn.disabled = true; }, 0);
+  });
+  // Coming back with the Back button can restore the page as it was left; reset any busy buttons.
+  window.addEventListener('pageshow', () => {
+    document.querySelectorAll('.is-loading').forEach((btn) => {
+      btn.classList.remove('is-loading', 'is-loading-icon');
+      btn.removeAttribute('aria-busy');
+      btn.disabled = false;
+    });
+  });
+
   // Print buttons: <button data-print>
   document.querySelectorAll('[data-print]').forEach((btn) => btn.addEventListener('click', () => window.print()));
 

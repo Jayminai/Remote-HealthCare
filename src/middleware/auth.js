@@ -5,7 +5,7 @@ async function loadUser(req, res, next) {
   const id = req.session?.userId;
   if (id) {
     const user = await db.get(
-      'SELECT id, role, full_name, email, phone, specialty, is_active, must_change_password FROM users WHERE id = ?',
+      'SELECT id, role, full_name, email, phone, specialty, is_active, must_change_password, email_verified FROM users WHERE id = ?',
       id
     );
     if (user && user.is_active) {
@@ -34,6 +34,10 @@ function requireAuth(req, res, next) {
   const path = req.originalUrl.split('?')[0];
   if (req.user.must_change_password && path !== passwordPage && path !== '/logout') {
     return res.redirect(passwordPage);
+  }
+  // Patients who registered themselves confirm their email address before using the service.
+  if (req.user.role === 'patient' && !req.user.email_verified && path !== '/logout' && !path.startsWith('/verify-email')) {
+    return res.redirect('/verify-email');
   }
   next();
 }

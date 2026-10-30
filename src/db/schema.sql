@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash        TEXT NOT NULL,
   is_active            INTEGER NOT NULL DEFAULT 1,
   must_change_password INTEGER NOT NULL DEFAULT 0, -- set for accounts created by staff
+  email_verified       INTEGER NOT NULL DEFAULT 1, -- 0 until a self-registered patient confirms their email
   last_login_at        TEXT,
   created_at           TEXT NOT NULL
 );
@@ -205,3 +206,14 @@ CREATE TABLE IF NOT EXISTS password_resets (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+-- "Confirm your email" links sent to patients who register themselves. Only the newest
+-- link for a user works; the rows are deleted once the address is confirmed.
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_user ON email_verifications(user_id);
