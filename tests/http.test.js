@@ -148,6 +148,131 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   assert.equal((await other.get(thread)).status, 404);
 });
 
+test('notifications open their content, clear when the page is opened directly, and update live', async () => {
+  const patient = new Client(base);
+  await patient.post('/register', {
+    ...patientForm, full_name: 'Kemi Adeyemi', id_number: '300400', date_of_birth: '1999-04-04', phone: '08066666666', email: 'kemi@stu.ui.edu.ng',
+  }, '/register');
+  await patient.get(await verifyLink((await db.get("SELECT id FROM users WHERE email = 'kemi@stu.ui.edu.ng'")).id));
+  const doctor = new Client(base);
+  await doctor.staffLogin('doctor@test.ng');
+  const doctorSince = (await doctor.live('/staff/live')).json.lastNotificationId;
+
+  // Booking notifies both sides, each linking to the appointment itself.
+  const date = nextClinicDay();
+  const slots = JSON.parse((await patient.get(`/api/slots?date=${date}`)).text);
+  await patient.post('/patient/book', { mode: 'video', date, time: slots.slots[0].time, reason: 'Live update check', doctor_id: String(doctorId) }, '/patient/book');
+  const appt = await db.get("SELECT * FROM appointments WHERE reason = 'Live update check'");
+
+  // The patient's page learns about it without reloading.
+  let live = await patient.live('/live?since=0');
+  assert.equal(live.status, 200);
+  assert.equal(live.json.unreadNotifications, 1);
+  const [booked] = live.json.notifications;
+  assert.equal(booked.title, 'Appointment booked');
+  assert.equal(booked.url, `/notifications/${booked.id}/open`);
+
+  // "Open" goes straight to the appointment.
+  let r = await patient.get(booked.url);
+  assert.equal(r.location, `/patient/appointments#appt-${appt.id}`);
+  assert.match((await patient.get('/patient/appointments')).text, new RegExp(`id="appt-${appt.id}"`));
+  assert.equal((await patient.live('/live')).json.unreadNotifications, 0);
+
+  // The doctor opens the queue for that day directly instead of through the notification: it is cleared too.
+  live = await doctor.live(`/staff/live?since=${doctorSince}`);
+  assert.equal(live.json.notifications[0].title, 'New appointment');
+  const unread = live.json.unreadNotifications;
+  // The queue refreshing itself on an open page is not the doctor looking at it: still unread.
+  await doctor.request('GET', `/staff/doctor?date=${date}`, null, { 'x-live': '1', accept: '*/*' });
+  assert.equal((await doctor.live('/staff/live')).json.unreadNotifications, unread);
+  const queue = await doctor.get(`/staff/doctor?date=${date}`);
+  assert.match(queue.text, new RegExp(`id="appt-${appt.id}"`));
+  assert.ok((await doctor.live('/staff/live')).json.unreadNotifications < unread);
+  assert.ok((await db.get('SELECT read_at FROM notifications WHERE id = ?', live.json.notifications[0].id)).read_at);
+
+  // Live conversation: the doctor writes (as the page's script does), the patient sees "typing…" and the message.
+  const thread = `/messages/${appt.patient_id}/${doctorId}`;
+  r = await patient.post(`${thread}/typing`, { typing: '1' }, thread, { accept: 'application/json' });
+  assert.equal(r.status, 204);
+  let updates = await doctor.live(`/staff${thread}/updates?after=0`);
+  assert.equal(updates.json.thread.typing, true);
+  r = await doctor.post(`/staff${thread}`, { body: 'See you on the call' }, `/staff${thread}`, { accept: 'application/json' });
+  assert.equal(r.status, 201);
+  const sent = JSON.parse(r.text).message;
+  assert.equal(sent.mine, true);
+  assert.equal(sent.read, false);
+  // An empty message gets an error the page can show, not a redirect.
+  r = await doctor.post(`/staff${thread}`, { body: ' ' }, `/staff${thread}`, { accept: 'application/json' });
+  assert.equal(r.status, 400);
+  assert.match(JSON.parse(r.text).error, /Type a message/);
+
+  // In a background tab the message stays unread...
+  updates = await patient.live(`${thread}/updates?after=0`);
+  assert.deepEqual(updates.json.thread.messages.map((m) => m.body), ['See you on the call']);
+  assert.equal(updates.json.thread.messages[0].mine, false);
+  assert.equal(updates.json.unreadMessages, 1);
+  // ...and is read, with its notification, once the conversation is on screen.
+  updates = await patient.live(`${thread}/updates?after=0&active=1`);
+  assert.equal(updates.json.unreadMessages, 0);
+  assert.equal(updates.json.unreadNotifications, 0);
+  updates = await doctor.live(`/staff${thread}/updates?after=${sent.id}`);
+  assert.equal(updates.json.thread.lastReadId, sent.id);
+  assert.equal(updates.json.thread.messages.length, 0);
+  assert.equal(updates.json.thread.typing, true); // the patient has not sent typing=0 yet
+  await patient.post(`${thread}/typing`, { typing: '0' }, thread, { accept: 'application/json' });
+  assert.equal((await doctor.live(`/staff${thread}/updates`)).json.thread.typing, false);
+
+  // Photos: the doctor sends a picture without text; only the two members of the conversation can open it.
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  const photo = await doctor.postJson(`/staff${thread}`, { body: '', image: `data:image/png;base64,${png}` }, `/staff${thread}`);
+  assert.equal(photo.status, 201);
+  assert.equal(photo.json.message.image, `/staff${thread}/images/1`);
+  updates = await patient.live(`${thread}/updates?after=${sent.id}`);
+  const seen = updates.json.thread.messages.at(-1);
+  assert.equal(seen.image, `${thread}/images/1`);
+  const pic = await patient.getBytes(seen.image);
+  assert.equal(pic.status, 200);
+  assert.equal(pic.type, 'image/png');
+  assert.deepEqual(pic.bytes, Buffer.from(png, 'base64'));
+  assert.match((await patient.get(thread)).text, new RegExp(`src="${thread}/images/1"`));
+  assert.match((await patient.get('/messages')).text, /fa-image[^>]*><\/i> Photo/);
+  assert.equal((await new Client(base).getBytes(seen.image)).status, 302); // signed out: sent to sign in
+  // Something that only claims to be a picture is refused.
+  r = await patient.postJson(thread, { body: 'look', image: `data:image/png;base64,${Buffer.from('not a picture').toString('base64')}` }, thread);
+  assert.equal(r.status, 400);
+  assert.match(r.json.error, /not a valid picture/);
+  r = await patient.postJson(thread, { body: '', image: 'data:text/html;base64,PGI+' }, thread);
+  assert.equal(r.status, 400);
+  // Too large for the request limit: a message the page can show, not an error page.
+  r = await patient.postJson(thread, { body: '', image: `data:image/jpeg;base64,${'A'.repeat(4.5 * 1024 * 1024)}` }, thread);
+  assert.equal(r.status, 413);
+  assert.match(r.json.error, /too large/);
+
+  // Without a session, the script is told to reload instead of being sent the sign-in page.
+  r = await new Client(base).live('/live');
+  assert.equal(r.status, 401);
+});
+
+test('live updates in the background do not keep an idle user signed in', async () => {
+  const doctor = new Client(base);
+  await doctor.staffLogin('doctor@test.ng');
+  const sid = decodeURIComponent(doctor.cookie.split('=')[1]).slice(2).split('.')[0];
+  const expires = async () => (await db.get('SELECT expires FROM sessions WHERE sid = ?', sid)).expires;
+  await doctor.get('/staff/doctor');
+  const before = await expires();
+  await new Promise((r) => setTimeout(r, 20));
+  const poll = await doctor.live('/staff/live');
+  assert.equal(poll.status, 200);
+  assert.equal(await expires(), before); // polling is not activity...
+  await doctor.get('/staff/doctor');
+  assert.ok(await expires() > before); // ...opening a page is
+
+  // Once the idle time has passed, the next poll finds the session signed out.
+  await db.run('UPDATE sessions SET expires = ? WHERE sid = ?', Date.now() - 1000, sid);
+  assert.equal((await doctor.live('/staff/live')).status, 401);
+  assert.equal((await doctor.get('/staff/doctor')).location, '/staff/login');
+});
+
 test('records office registers a walk-in, flags duplicates and records vitals', async () => {
   const nurse = new Client(base);
   await nurse.staffLogin('nurse@test.ng');
@@ -249,6 +374,11 @@ test('patients and staff sign in on separate pages', async () => {
   const doctor = new Client(base);
   await doctor.staffLogin('doctor@test.ng');
   assert.equal((await doctor.get('/messages')).location, '/staff/messages');
+  // The staff portal's "Patient website" link opens the public home page, not the staff dashboard again.
+  assert.match((await doctor.get('/staff/doctor')).text, /href="\/" class="staff-site-link"/);
+  r = await doctor.get('/');
+  assert.equal(r.status, 200);
+  assert.match(r.text, /href="\/staff"[^>]*>Staff Portal/);
   r = await doctor.post('/logout', {}, '/staff/doctor');
   assert.equal(r.location, '/staff/login');
 });

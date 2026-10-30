@@ -1,12 +1,12 @@
 <%- include('../partials/head') %>
 <div class="page-head">
-  <h1>Find a patient</h1>
-  <% if (currentUser.role === 'nurse') { %><a class="btn" href="/staff/records/patients/new">Register new patient</a><% } %>
+  <h1><i class="fa-solid fa-magnifying-glass h-icon" aria-hidden="true"></i>Find a patient</h1>
+  <% if (currentUser.role === 'nurse') { %><a class="btn" href="/staff/records/patients/new"><i class="fa-solid fa-user-plus" aria-hidden="true"></i> Register new patient</a><% } %>
 </div>
 <div class="card">
   <form method="get" action="<%= currentPath %>" class="row">
     <input type="search" name="q" value="<%= q %>" placeholder="Name, UHS number, matric/staff number, phone or old file number" style="flex:1; min-width:220px" autofocus>
-    <button class="btn" type="submit">Search</button>
+    <button class="btn" type="submit"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Search</button>
   </form>
 </div>
 <% if (q) { %>

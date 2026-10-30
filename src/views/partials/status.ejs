@@ -1,1 +1,3 @@
-<span class="badge badge-<%= s %>"><%= STATUS_LABELS[s] || s %></span>
+<%# Waiting and in-progress are live states, so their icons move (see .status-live in style.css). %>
+<% const statusIcons = { booked: 'fa-regular fa-calendar', checked_in: 'fa-solid fa-hourglass-half status-wait', completed: 'fa-solid fa-circle-check', cancelled: 'fa-solid fa-ban', no_show: 'fa-solid fa-user-xmark' }; %>
+<span class="badge badge-<%= s %>"><% if (s === 'in_progress') { %><span class="status-live" aria-hidden="true"></span><% } else if (statusIcons[s]) { %><i class="<%= statusIcons[s] %>" aria-hidden="true"></i><% } %> <%= STATUS_LABELS[s] || s %></span>

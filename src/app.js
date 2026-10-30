@@ -11,7 +11,9 @@ const { runReminders } = require('./services/reminders');
 const t = require('./utils/time');
 const { MODES } = require('./services/appointments');
 const { ENTRY_TYPES, SOURCES } = require('./services/records');
-const { loadUser, homeFor } = require('./middleware/auth');
+const { loadUser, homeFor, isBackground, isPageView } = require('./middleware/auth');
+const { markLinkRead } = require('./services/notify');
+const { unreadCounts } = require('./services/live');
 const { securityHeaders, csrf } = require('./middleware/security');
 
 const STATUS_LABELS = {
@@ -57,7 +59,7 @@ function asset(file) {
  * Patients use the public site and staff use /staff. A signed-in user who opens a page meant for
  * the other group is sent to the matching page on their own side (or refused, for form posts).
  */
-const SHARED_PATHS = /^\/(messages|notifications|account)(\/|$)/;
+const SHARED_PATHS = /^\/(messages|notifications|account|live)(\/|$)/;
 function portalGuard(req, res, next) {
   if (!req.user) return next();
   const isStaff = req.user.role !== 'patient';
@@ -119,27 +121,33 @@ function createApp() {
   }
 
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
-  app.use(
-    session({
-      store: new SqliteStore(),
-      name: 'uhs.sid',
-      secret: config.sessionSecret,
-      resave: false,
-      saveUninitialized: false,
-      rolling: true, // idle timeout: the session expires after N minutes of inactivity
-      cookie: {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: config.isProduction,
-        maxAge: config.sessionMinutes * 60 * 1000,
-      },
-    })
-  );
+  const idleMs = config.sessionMinutes * 60 * 1000;
+  const store = new SqliteStore();
+  const sessionOptions = {
+    name: 'uhs.sid',
+    secret: config.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { httpOnly: true, sameSite: 'lax', secure: config.isProduction, maxAge: idleMs },
+  };
+  // Idle timeout: the session expires after N minutes of inactivity, so every page renews it...
+  const pageSession = session({ ...sessionOptions, store, rolling: true });
+  // ...except the live-update requests a page makes in the background every few seconds, which would
+  // otherwise keep an unattended screen signed in forever. They renew neither the cookie nor the stored expiry.
+  const backgroundSession = session({
+    ...sessionOptions,
+    store: Object.create(store, { touch: { value: (sid, sess, cb) => cb?.() } }),
+    rolling: false,
+  });
+  app.use((req, res, next) => (isBackground(req) ? backgroundSession : pageSession)(req, res, next));
 
-  // Flash messages survive exactly one redirect.
+  // Flash messages survive exactly one redirect. Background requests leave them for the page the user sees next.
   app.use((req, res, next) => {
-    res.locals.flash = req.session.flash || null;
-    delete req.session.flash;
+    res.locals.flash = null;
+    if (!isBackground(req)) {
+      res.locals.flash = req.session.flash || null;
+      delete req.session.flash;
+    }
     req.flash = (type, message) => {
       req.session.flash = { type, message };
     };
@@ -166,6 +174,7 @@ function createApp() {
       csrfToken: '',
       unreadNotifications: 0,
       unreadMessages: 0,
+      lastNotificationId: 0,
     });
     next();
   });
@@ -176,18 +185,14 @@ function createApp() {
   // Unread counters for the navigation bar.
   app.use(async (req, res, next) => {
     if (req.user) {
-      res.locals.unreadNotifications = (await db.get(
-        'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL', req.user.id
-      )).n;
-      if (req.user.role === 'patient' || req.user.role === 'doctor') {
-        const where = req.user.role === 'patient'
-          ? 'patient_id = (SELECT id FROM patients WHERE user_id = ?)'
-          : 'doctor_id = ?';
-        res.locals.unreadMessages = (await db.get(
-          `SELECT COUNT(*) AS n FROM messages WHERE ${where} AND sender_id <> ? AND read_at IS NULL`,
-          req.user.id, req.user.id
-        )).n;
-      }
+      // Opening a page directly (not from the notification list) also reads the notifications that point to it.
+      // Not when a list on an open page refreshes itself: the user may not be looking at it.
+      if (isPageView(req)) await markLinkRead(req.user.id, req.originalUrl);
+      const counts = await unreadCounts(req.user);
+      res.locals.liveCounts = counts;
+      res.locals.unreadNotifications = counts.notifications;
+      res.locals.unreadMessages = counts.messages;
+      res.locals.lastNotificationId = counts.lastNotificationId;
     }
     next();
   });
@@ -203,6 +208,7 @@ function createApp() {
   app.use('/consult', require('./routes/consult'));
   app.use('/messages', require('./routes/messages'));
   app.use('/notifications', require('./routes/notifications'));
+  app.use('/live', require('./routes/live'));
 
   // Staff portal (doctors, nurses / records office, administrators).
   app.use('/staff/doctor', require('./routes/doctor'));
@@ -211,6 +217,7 @@ function createApp() {
   app.use('/staff/admin', require('./routes/admin'));
   app.use('/staff/messages', require('./routes/messages'));
   app.use('/staff/notifications', require('./routes/notifications'));
+  app.use('/staff/live', require('./routes/live'));
   app.use('/staff/account', require('./routes/account'));
 
   // Staff pages used to live at the top level; keep old bookmarks and notification links working.
@@ -222,8 +229,16 @@ function createApp() {
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).render('error', {
+    // Request errors (e.g. a body that is too large) keep their status; anything else is a server error.
+    const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+    if (status === 500) console.error(err);
+    // The page's scripts ask for JSON and show the message themselves.
+    if (req.accepts(['html', 'json']) === 'json') {
+      return res.status(status).json({
+        error: status === 413 ? 'That photo is too large. Please choose a smaller one.' : 'Something went wrong. Please try again.',
+      });
+    }
+    res.status(status).render('error', {
       title: 'Something went wrong',
       message: config.isProduction ? 'An unexpected error occurred. Please try again.' : err.message,
     });

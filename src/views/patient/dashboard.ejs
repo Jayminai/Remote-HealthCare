@@ -1,28 +1,25 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <div>
-    <h1>Hello, <%= patient.full_name.split(' ')[0] %></h1>
+    <h1><i class="fa-regular fa-hand h-icon wave" aria-hidden="true"></i>Hello, <%= patient.full_name.split(' ')[0] %></h1>
     <span class="muted">UHS number <strong><%= patient.uhs_number %></strong></span>
   </div>
-  <a class="btn" href="/patient/book">Book a consultation</a>
+  <a class="btn" href="/patient/book"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i> Book a consultation</a>
 </div>
 
 <div class="split">
   <div class="card">
-    <div class="card-head"><h2>Upcoming appointments</h2><a href="/patient/appointments">View all</a></div>
+    <div class="card-head"><h2><i class="fa-regular fa-calendar-days h-icon" aria-hidden="true"></i>Upcoming appointments</h2><a href="/patient/appointments">View all</a></div>
     <% if (!upcoming.length) { %>
       <p class="empty">You have no upcoming appointments.</p>
     <% } else { %>
-      <div class="table-wrap"><table>
+      <div class="table-wrap"><table class="appt-cards">
         <thead><tr><th>When</th><th>Type</th><th>Doctor</th><th>Status</th><th></th></tr></thead>
         <tbody>
         <% upcoming.forEach((a) => { %>
           <tr>
-            <td><%= t.fmtDateTime(a.scheduled_at) %></td>
-            <td><%- include('../partials/mode', { m: a.mode }) %></td>
-            <td><%= a.doctor_name || 'Next available' %></td>
-            <td><%- include('../partials/status', { s: a.status }) %></td>
-            <td><% if (a.canJoin) { %><a class="btn btn-accent btn-sm" href="/consult/<%= a.id %>">Join consultation</a><% } %></td>
+            <%- include('../partials/appt_cells', { a, showReason: false }) %>
+            <td class="ac-actions"><% if (a.canJoin) { %><a class="btn btn-accent btn-sm btn-live" href="/consult/<%= a.id %>"><i class="fa-solid fa-video" aria-hidden="true"></i> Join consultation</a><% } %></td>
           </tr>
         <% }) %>
         </tbody>
@@ -36,7 +33,7 @@
       <div class="alert alert-info">Tell the doctor about any allergies during your first consultation so they are recorded in your file.</div>
     <% } %>
     <div class="card">
-      <div class="card-head"><h2>Recent consultations</h2><a href="/patient/records">My record</a></div>
+      <div class="card-head"><h2><i class="fa-solid fa-stethoscope h-icon" aria-hidden="true"></i>Recent consultations</h2><a href="/patient/records">My record</a></div>
       <% if (!recent.length) { %>
         <p class="empty">No consultations yet.</p>
       <% } else { %>
@@ -54,7 +51,7 @@
       <% } %>
     </div>
     <div class="card">
-      <h2>Need help?</h2>
+      <h2><i class="fa-regular fa-life-ring h-icon" aria-hidden="true"></i>Need help?</h2>
       <p>Questions after a visit? <a href="/messages">Send a secure message</a> to your doctor.</p>
       <p class="muted">Keep your phone number up to date in <a href="/account/profile">your profile</a>.</p>
     </div>

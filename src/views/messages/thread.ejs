@@ -1,38 +1,53 @@
 <%- include('../partials/head') %>
 <% const isPatient = currentUser.role === 'patient'; %>
-<div class="page-head">
-  <div>
-    <h1><%= isPatient ? doctor.full_name : patient.full_name %></h1>
+<% const otherName = isPatient ? doctor.full_name : patient.full_name; %>
+<%# On phones this page fills the screen like a messaging app: the header and the message box stay put and only
+    the messages scroll (see .chat-screen in style.css). %>
+<div class="page-head chat-head">
+  <a class="btn btn-light chat-back" href="<%= base %>/messages" aria-label="All messages"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span> All messages</span></a>
+  <div class="chat-title">
+    <h1><%= otherName %></h1>
     <% if (!isPatient) { %><span class="muted"><%= patient.uhs_number %> · <a href="/staff/patients/<%= patient.id %>">View record</a></span><% } %>
   </div>
-  <a class="btn btn-light" href="<%= base %>/messages">All messages</a>
 </div>
-<div class="card narrow" style="max-width:820px">
-  <div class="thread">
-    <% if (!messages.length) { %><p class="empty">No messages yet. Say hello.</p><% } %>
+<div class="card narrow chat-card" style="max-width:820px">
+  <%# New messages, read receipts and "typing…" arrive without reloading (public/js/live.js). %>
+  <div class="thread" data-thread="<%= base %>/messages/<%= patient.id %>/<%= doctor.id %>"
+       data-last-id="<%= messages.length ? messages[messages.length - 1].id : 0 %>" aria-live="polite">
+    <% if (!messages.length) { %><p class="empty" data-thread-empty>No messages yet. Say hello.</p><% } %>
     <% messages.forEach((m, i) => { %>
-      <div class="msg <%= m.sender_id === currentUser.id ? 'mine' : '' %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
-        <span class="body"><%= m.body %></span>
-        <span class="meta"><%= t.fmtDateTime(m.created_at) %><%= m.sender_id === currentUser.id && m.read_at ? ' · read' : '' %></span>
+      <div class="msg <%= m.sender_id === currentUser.id ? 'mine' : '' %>" data-id="<%= m.id %>" <%- i === messages.length - 1 ? 'id="latest"' : '' %>>
+        <% if (m.image_id) { const src = `${base}/messages/${patient.id}/${doctor.id}/images/${m.image_id}`; %>
+          <a class="msg-photo" href="<%= src %>" target="_blank" rel="noopener"><img src="<%= src %>" alt="Photo" loading="lazy"></a>
+        <% } %>
+        <% if (m.body) { %><span class="body"><%= m.body %></span><% } %>
+        <span class="meta"><%= t.fmtDateTime(m.created_at) %><% if (m.sender_id === currentUser.id) { %><span data-read <%= m.read_at ? '' : 'hidden' %>> · read</span><% } %></span>
       </div>
     <% }) %>
   </div>
-  <hr>
+  <p class="typing" data-typing hidden><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span> <%= otherName %> is typing…</p>
   <% if (!isPatient && !patient.user_id) { %>
-    <div class="alert alert-info">This patient has no online account. Please contact them by phone.</div>
+    <div class="alert alert-info chat-notice">This patient has no online account. Please contact them by phone.</div>
   <% } else if (!doctor.is_active) { %>
-    <div class="alert alert-info">This doctor is no longer available on the platform.</div>
+    <div class="alert alert-info chat-notice">This doctor is no longer available on the platform.</div>
   <% } else { %>
-  <form method="post" action="<%= base %>/messages/<%= patient.id %>/<%= doctor.id %>">
+  <form class="chat-composer" method="post" action="<%= base %>/messages/<%= patient.id %>/<%= doctor.id %>" data-message-form>
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-    <div class="field">
-      <label for="body">Your message</label>
-      <textarea id="body" name="body" maxlength="2000" required></textarea>
+    <div class="alert alert-error" data-message-error role="alert" hidden></div>
+    <%# Photo chosen to send, shown before sending (public/js/live.js). %>
+    <div class="chat-attachment" data-photo-preview hidden>
+      <img alt="Photo to send">
+      <button type="button" class="chat-attachment-remove" data-photo-remove aria-label="Remove photo"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
     </div>
-    <div class="row">
-      <button class="btn" type="submit">Send</button>
-      <% if (isPatient) { %><small class="muted">Not for emergencies. For urgent problems go to the UHS emergency unit.</small><% } %>
+    <div class="chat-input">
+      <%# Sending photos needs JavaScript, so the button only appears once live.js has loaded. %>
+      <button type="button" class="btn btn-light chat-attach" data-photo-button hidden title="Send a photo" aria-label="Send a photo"><i class="fa-regular fa-image" aria-hidden="true"></i></button>
+      <input type="file" accept="image/*" data-photo-input hidden>
+      <label for="body" class="sr-only">Your message</label>
+      <textarea id="body" name="body" maxlength="2000" rows="1" placeholder="Type a message" required></textarea>
+      <button class="btn chat-send" type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span> Send</span></button>
     </div>
+    <% if (isPatient) { %><small class="muted chat-hint">Not for emergencies. For urgent problems go to the UHS emergency unit.</small><% } %>
   </form>
   <% } %>
 </div>

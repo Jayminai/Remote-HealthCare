@@ -1,6 +1,6 @@
 <%- include('../partials/head') %>
 <div class="narrow card">
-  <h1>Online access enabled</h1>
+  <h1><i class="fa-solid fa-lock-open h-icon" aria-hidden="true"></i>Online access enabled</h1>
   <p><strong><%= patient.full_name %></strong> (<%= patient.uhs_number %>) can now sign in.</p>
   <dl class="kv">
     <dt>Sign in at</dt><dd><%= signInUrl %></dd>
@@ -11,6 +11,6 @@
     Give this password to the patient privately (write it down for them). It is shown <strong>only once</strong>.
     They will be asked to choose a new password the first time they sign in.
   </div>
-  <a class="btn" href="/staff/patients/<%= patient.id %>">Back to patient record</a>
+  <a class="btn" href="/staff/patients/<%= patient.id %>"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to patient record</a>
 </div>
 <%- include('../partials/foot') %>

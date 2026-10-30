@@ -295,7 +295,7 @@ router.post('/appointments/:id/no-show', async (req, res) => {
   if (!a) return;
   if (await appts.markNoShow(a)) {
     await audit(req, 'appointment_no_show', 'appointment', a.id);
-    await notifyPatient(a.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(a.scheduled_at)}. Please book again if you still need care.`, '/patient/book');
+    await notifyPatient(a.patient_id, 'Missed appointment', `You missed your appointment on ${t.fmtDateTime(a.scheduled_at)}. Please book again if you still need care.`, `/patient/appointments#appt-${a.id}`);
     req.flash('success', 'Marked as no-show.');
   } else {
     req.flash('error', 'Only booked appointments whose time has passed can be marked as no-show.');
@@ -308,7 +308,7 @@ router.post('/appointments/:id/cancel', async (req, res) => {
   if (!a) return;
   if (await appts.cancel(a, v.str(req.body.reason, 200) || 'Cancelled by records office')) {
     await audit(req, 'appointment_cancelled', 'appointment', a.id);
-    await notifyPatient(a.patient_id, 'Appointment cancelled', `Your appointment on ${t.fmtDateTime(a.scheduled_at)} was cancelled by the UHS records office. Please book a new time or call the clinic.`, '/patient/book');
+    await notifyPatient(a.patient_id, 'Appointment cancelled', `Your appointment on ${t.fmtDateTime(a.scheduled_at)} was cancelled by the UHS records office. Please book a new time or call the clinic.`, `/patient/appointments#appt-${a.id}`);
     req.flash('success', 'Appointment cancelled.');
   } else {
     req.flash('error', 'This appointment can no longer be cancelled.');

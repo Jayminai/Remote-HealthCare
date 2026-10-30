@@ -5,8 +5,41 @@ const t = require('../utils/time');
 const v = require('../utils/validate');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { audit } = require('../services/audit');
-const { notifyUser } = require('../services/notify');
+const { notifyUser, markLinkRead } = require('../services/notify');
+const { summary, unreadCounts } = require('../services/live');
 const { patientForUser } = require('../services/patients');
+
+// "Typing…" shows while the other person typed within this many milliseconds.
+const TYPING_MS = 6000;
+
+// Photos in messages. The browser shrinks them before sending (public/js/live.js), so this limit is generous;
+// requests to Vercel functions cannot be larger than 4.5 MB in any case.
+const MAX_IMAGE_BYTES = 2.5 * 1024 * 1024;
+const IMAGE_TYPES = {
+  'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  'image/png': (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  'image/webp': (b) => b.toString('latin1', 0, 4) === 'RIFF' && b.toString('latin1', 8, 12) === 'WEBP',
+  'image/gif': (b) => b.toString('latin1', 0, 4) === 'GIF8',
+};
+
+/**
+ * A photo sent as a data URL ("data:image/jpeg;base64,..."). Returns { type, data }, null when there is none,
+ * or { error } when it is not an accepted picture. The bytes must match the stated type, so nothing else
+ * can be stored and later served as an image.
+ */
+function parseImage(value) {
+  if (value == null || value === '') return null;
+  const m = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(value));
+  if (!m || !IMAGE_TYPES[m[1]]) return { error: 'Send a photo in JPEG, PNG, WebP or GIF format.' };
+  const data = Buffer.from(m[2], 'base64');
+  if (data.length > MAX_IMAGE_BYTES) return { error: 'That photo is too large. Please choose a smaller one.' };
+  if (!IMAGE_TYPES[m[1]](data)) return { error: 'That file is not a valid picture.' };
+  return { type: m[1], data };
+}
+
+/** Messages of a thread with the id of their photo, if any (the photo itself is fetched separately). */
+const MESSAGES_SQL = `SELECT m.*, i.id AS image_id FROM messages m LEFT JOIN message_images i ON i.message_id = m.id
+  WHERE m.patient_id = ? AND m.doctor_id = ?`;
 
 const router = express.Router();
 router.use(requireAuth, requireRole('patient', 'doctor'));
@@ -58,49 +91,139 @@ router.get('/', async (req, res) => {
     req.user.id, param
   );
   const p = req.user.role === 'patient' ? await patientForUser(req.user.id) : null;
-  res.render('messages/index', { title: 'Messages', threads, doctors: p ? await doctorsForPatient(p.id) : [], patient: p });
+  res.render('messages/index', { title: 'Messages', bodyClass: 'chat-screen', threads, doctors: p ? await doctorsForPatient(p.id) : [], patient: p });
 });
+
+/** Mark the other person's messages in the thread, and the notifications about them, as read. */
+async function markThreadRead(req, res, patient, doctor) {
+  await db.run(
+    'UPDATE messages SET read_at = ? WHERE patient_id = ? AND doctor_id = ? AND sender_id <> ? AND read_at IS NULL',
+    t.now(), patient.id, doctor.id, req.user.id
+  );
+  await markLinkRead(req.user.id, `${res.locals.base}/messages/${patient.id}/${doctor.id}`);
+}
+
+/** A message as the browser shows it (see public/js/live.js). threadUrl: the conversation's address. */
+function present(m, user, threadUrl) {
+  return {
+    id: m.id,
+    mine: m.sender_id === user.id,
+    body: m.body,
+    image: m.image_id ? `${threadUrl}/images/${m.image_id}` : null,
+    when: t.fmtDateTime(m.created_at),
+    read: Boolean(m.read_at),
+  };
+}
+
+const threadUrl = (res, patient, doctor) => `${res.locals.base}/messages/${patient.id}/${doctor.id}`;
+
+/** Scripts sending the form ask for JSON so the page can update without reloading. */
+const wantsJson = (req) => req.accepts(['html', 'json']) === 'json';
 
 router.get('/:patientId/:doctorId', async (req, res) => {
   const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
   if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
   const { patient, doctor } = access;
-  await db.run(
-    'UPDATE messages SET read_at = ? WHERE patient_id = ? AND doctor_id = ? AND sender_id <> ? AND read_at IS NULL',
-    t.now(), patient.id, doctor.id, req.user.id
-  );
-  const messages = await db.all(
-    'SELECT * FROM messages WHERE patient_id = ? AND doctor_id = ? ORDER BY created_at, id',
-    patient.id, doctor.id
-  );
-  res.render('messages/thread', { title: 'Conversation', patient, doctor, messages });
+  await markThreadRead(req, res, patient, doctor);
+  // The menu counters were counted before this conversation was read.
+  const counts = await unreadCounts(req.user);
+  res.locals.unreadMessages = counts.messages;
+  res.locals.unreadNotifications = counts.notifications;
+  const messages = await db.all(`${MESSAGES_SQL} ORDER BY m.created_at, m.id`, patient.id, doctor.id);
+  res.render('messages/thread', { title: 'Conversation', bodyClass: 'chat-screen', patient, doctor, messages });
 });
 
-router.post('/:patientId/:doctorId', async (req, res) => {
+// Polled by the open conversation: new messages, read receipts and whether the other person is typing,
+// plus the counters and notifications every page receives.
+router.get('/:patientId/:doctorId/updates', async (req, res) => {
   const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
-  if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
+  if (!access) return res.status(404).json({ error: 'Conversation not found.' });
+  const { patient, doctor } = access;
+  // Only while the page is on screen, so a conversation left open in a background tab stays unread.
+  if (req.query.active === '1') await markThreadRead(req, res, patient, doctor);
+  const messages = await db.all(
+    `${MESSAGES_SQL} AND m.id > ? ORDER BY m.created_at, m.id`,
+    patient.id, doctor.id, v.int(req.query.after) || 0
+  );
+  const lastRead = await db.get(
+    'SELECT MAX(id) AS id FROM messages WHERE patient_id = ? AND doctor_id = ? AND sender_id = ? AND read_at IS NOT NULL',
+    patient.id, doctor.id, req.user.id
+  );
+  const typing = await db.get(
+    'SELECT 1 AS x FROM typing WHERE patient_id = ? AND doctor_id = ? AND user_id <> ? AND at > ?',
+    patient.id, doctor.id, req.user.id, Date.now() - TYPING_MS
+  );
+  res.json({
+    ...await summary(req.user, v.int(req.query.since) ?? -1, res.locals.base),
+    thread: { messages: messages.map((m) => present(m, req.user, threadUrl(res, patient, doctor))), lastReadId: lastRead.id || 0, typing: Boolean(typing) },
+  });
+});
+
+// A photo in the conversation, only for its two members.
+router.get('/:patientId/:doctorId/images/:imageId', async (req, res) => {
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  const image = access && await db.get(
+    `SELECT i.content_type, i.data FROM message_images i JOIN messages m ON m.id = i.message_id
+      WHERE i.id = ? AND m.patient_id = ? AND m.doctor_id = ?`,
+    v.int(req.params.imageId), access.patient.id, access.doctor.id
+  );
+  if (!image) return res.status(404).end();
+  res.type(image.content_type).set('Content-Disposition', 'inline').send(Buffer.from(image.data));
+});
+
+// Sent by the page every few seconds while the user types ("typing=1"), and once they stop ("typing=0").
+router.post('/:patientId/:doctorId/typing', async (req, res) => {
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  if (!access) return res.status(404).json({ error: 'Conversation not found.' });
+  const key = [access.patient.id, access.doctor.id, req.user.id];
+  if (req.body.typing === '1') {
+    await db.run(
+      `INSERT INTO typing (patient_id, doctor_id, user_id, at) VALUES (?, ?, ?, ?)
+       ON CONFLICT (patient_id, doctor_id, user_id) DO UPDATE SET at = excluded.at`,
+      ...key, Date.now()
+    );
+  } else {
+    await db.run('DELETE FROM typing WHERE patient_id = ? AND doctor_id = ? AND user_id = ?', ...key);
+  }
+  res.status(204).end();
+});
+
+// Text from the form, or JSON from the page's script, which can also carry a photo.
+router.post('/:patientId/:doctorId', express.json({ limit: '4mb' }), async (req, res) => {
+  const json = wantsJson(req);
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  if (!access) {
+    if (json) return res.status(404).json({ error: 'Conversation not found.' });
+    return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
+  }
   const { patient, doctor } = access;
   const body = v.str(req.body.body, 2000);
   const path = `/messages/${patient.id}/${doctor.id}`;
   const url = `${res.locals.base}${path}`;
-  if (!body) {
-    req.flash('error', 'Type a message first.');
-    return res.redirect(url);
-  }
+  const fail = (message) => {
+    if (json) return res.status(400).json({ error: message });
+    req.flash('error', message);
+    res.redirect(url);
+  };
+  const image = parseImage(req.body.image);
+  if (image?.error) return fail(image.error);
+  if (!body && !image) return fail('Type a message first.');
   if (req.user.role === 'doctor' && !patient.user_id) {
-    req.flash('error', 'This patient has no online account. Please contact them by phone, or ask the records office to enable online access.');
-    return res.redirect(url);
+    return fail('This patient has no online account. Please contact them by phone, or ask the records office to enable online access.');
   }
-  if (!doctor.is_active) {
-    req.flash('error', 'This doctor is no longer available. Please message another doctor or call the clinic.');
-    return res.redirect(url);
-  }
-  const id = await db.insert('messages', { patient_id: patient.id, doctor_id: doctor.id, sender_id: req.user.id, body });
-  await audit(req, 'message_sent', 'message', id);
+  if (!doctor.is_active) return fail('This doctor is no longer available. Please message another doctor or call the clinic.');
+  const id = await db.tx(async () => {
+    const messageId = await db.insert('messages', { patient_id: patient.id, doctor_id: doctor.id, sender_id: req.user.id, body });
+    if (image) await db.insert('message_images', { message_id: messageId, content_type: image.type, data: image.data });
+    return messageId;
+  });
+  await db.run('DELETE FROM typing WHERE patient_id = ? AND doctor_id = ? AND user_id = ?', patient.id, doctor.id, req.user.id);
+  await audit(req, 'message_sent', 'message', id, image ? { photo: true } : undefined);
   // The doctor reads messages in the staff portal, the patient on the public site.
   const [recipient, link] = req.user.role === 'doctor' ? [patient.user_id, path] : [doctor.id, `/staff${path}`];
   // Email says only that a message exists; the content stays inside the secure system.
   await notifyUser(recipient, 'New secure message', `You have a new message from ${req.user.full_name}. Sign in to read it.`, link);
+  if (json) return res.status(201).json({ message: present(await db.get(`${MESSAGES_SQL} AND m.id = ?`, patient.id, doctor.id, id), req.user, url) });
   res.redirect(`${url}#latest`);
 });
 

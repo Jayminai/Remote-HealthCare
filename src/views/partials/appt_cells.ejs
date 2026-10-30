@@ -1,0 +1,11 @@
+<%# Cells shared by the patient's appointment tables. On phones the row becomes a card with an icon per line
+    (table.appt-cards in style.css); on wider screens the icons are hidden and it is an ordinary table row.
+    Needs: a (appointment), showReason %>
+<% const modeIcons = { video: 'fa-solid fa-video', audio: 'fa-solid fa-phone', in_person: 'fa-solid fa-hospital-user' }; %>
+<td class="ac-when"><i class="fa-regular fa-clock ac-icon" aria-hidden="true"></i><span><%= t.fmtDateTime(a.scheduled_at) %></span></td>
+<td class="ac-mode"><i class="<%= modeIcons[a.mode] %> ac-icon" aria-hidden="true"></i><%- include('mode', { m: a.mode }) %></td>
+<td class="ac-doctor"><i class="fa-solid fa-user-doctor ac-icon" aria-hidden="true"></i><span><%= a.doctor_name || 'Next available' %></span></td>
+<% if (showReason) { %>
+<td class="ac-reason"><i class="fa-solid fa-notes-medical ac-icon" aria-hidden="true"></i><span><%= a.reason %><% if (a.cancel_reason && a.status === 'cancelled') { %><br><small><%= a.cancel_reason %></small><% } %></span></td>
+<% } %>
+<td class="ac-status"><%- include('status', { s: a.status }) %></td>

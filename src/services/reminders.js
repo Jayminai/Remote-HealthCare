@@ -39,7 +39,7 @@ async function runReminders(at = new Date()) {
       a.patient_id,
       kind === '1h' ? 'Appointment within the hour' : 'Upcoming appointment',
       `Reminder: ${MODES[a.mode]} with ${a.doctor_name || 'a UHS doctor'} on ${t.fmtDateTime(a.scheduled_at)}. ${how}`,
-      '/patient/appointments'
+      `/patient/appointments#appt-${a.id}`
     );
     sent++;
   }
@@ -58,7 +58,7 @@ async function runReminders(at = new Date()) {
         c.patient_id,
         'Follow-up due today',
         `${c.doctor_name} asked you to follow up today.${c.follow_up_note ? ` Note: ${c.follow_up_note}` : ''} Book a follow-up appointment or send a message.`,
-        '/patient/book'
+        `/patient/records#consultation-${c.id}`
       );
       sent++;
     }

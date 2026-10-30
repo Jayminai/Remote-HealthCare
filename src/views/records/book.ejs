@@ -1,7 +1,7 @@
 <%- include('../partials/head', { scripts: ['/static/js/booking.js'] }) %>
 <div class="page-head">
-  <div><h1>Book for <%= patient.full_name %></h1><span class="muted"><%= patient.uhs_number %> · <%= patient.phone || 'no phone on file' %></span></div>
-  <a class="btn btn-light" href="/staff/patients/<%= patient.id %>">Back to record</a>
+  <div><h1><i class="fa-solid fa-calendar-plus h-icon" aria-hidden="true"></i>Book for <%= patient.full_name %></h1><span class="muted"><%= patient.uhs_number %> · <%= patient.phone || 'no phone on file' %></span></div>
+  <a class="btn btn-light" href="/staff/patients/<%= patient.id %>"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to record</a>
 </div>
 <div class="split">
   <div class="card">
@@ -9,7 +9,7 @@
     <%- include('../partials/booking_form', { action: `/staff/records/patients/${patient.id}/book` }) %>
   </div>
   <div class="card">
-    <h2>Phone bookings</h2>
+    <h2><i class="fa-solid fa-phone h-icon" aria-hidden="true"></i>Phone bookings</h2>
     <p>Use this form when a patient calls the clinic. Read the date and time back to the patient before saving.</p>
     <% if (!patient.user_id) { %>
       <div class="alert alert-info">This patient has no online account, so only <strong>in-person</strong> appointments can be booked.

@@ -1,26 +1,28 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <div>
-    <h1><%= isToday ? "Today's consultations" : 'Consultations' %></h1>
+    <h1><i class="fa-solid fa-list-check h-icon" aria-hidden="true"></i><%= isToday ? "Today's consultations" : 'Consultations' %></h1>
     <span class="muted"><%= t.fmtDate(date) %></span>
   </div>
   <form class="row" method="get" action="/staff/doctor">
-    <a class="btn btn-light btn-sm" href="/staff/doctor?date=<%= prevDate %>">← Previous day</a>
+    <a class="btn btn-light btn-sm" href="/staff/doctor?date=<%= prevDate %>"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i> Previous day</a>
     <input type="date" name="date" value="<%= date %>" style="width:auto">
-    <button class="btn btn-light btn-sm" type="submit">Go</button>
-    <a class="btn btn-light btn-sm" href="/staff/doctor?date=<%= nextDate %>">Next day →</a>
-    <% if (!isToday) { %><a class="btn btn-sm" href="/staff/doctor">Today</a><% } %>
+    <button class="btn btn-light btn-sm" type="submit">Go <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+    <a class="btn btn-light btn-sm" href="/staff/doctor?date=<%= nextDate %>">Next day <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+    <% if (!isToday) { %><a class="btn btn-sm" href="/staff/doctor"><i class="fa-solid fa-calendar-day" aria-hidden="true"></i> Today</a><% } %>
   </form>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="value"><%= counts.total %></div><div class="label">Booked with me</div></div>
-  <div class="stat"><div class="value"><%= counts.waiting %></div><div class="label">Waiting now</div></div>
-  <div class="stat"><div class="value"><%= counts.remote %></div><div class="label">Remote (video / audio)</div></div>
-  <div class="stat"><div class="value"><%= counts.completed %></div><div class="label">Completed</div></div>
+<%# The figures and the queue refresh themselves when a notification arrives (public/js/live.js). %>
+<div class="stats" id="doctor-stats" data-live-refresh="notifications">
+  <div class="stat"><span class="stat-icon"><i class="fa-regular fa-calendar-check" aria-hidden="true"></i></span><div class="value"><%= counts.total %></div><div class="label">Booked with me</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i></span><div class="value"><%= counts.waiting %></div><div class="label">Waiting now</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></span><div class="value"><%= counts.remote %></div><div class="label">Remote (video / audio)</div></div>
+  <div class="stat"><span class="stat-icon"><i class="fa-solid fa-circle-check" aria-hidden="true"></i></span><div class="value"><%= counts.completed %></div><div class="label">Completed</div></div>
 </div>
 
-<div class="card">
+<%# Refreshed in place when a notification arrives, e.g. a patient checks in (public/js/live.js). %>
+<div class="card" id="doctor-queue" data-live-refresh="notifications">
   <% if (!list.length) { %>
     <p class="empty">No appointments for this day.</p>
   <% } else { %>
@@ -28,7 +30,7 @@
     <thead><tr><th>Time</th><th>Patient</th><th>Type</th><th>Reason</th><th>Status</th><th></th></tr></thead>
     <tbody>
     <% list.forEach((a) => { %>
-      <tr>
+      <tr id="appt-<%= a.id %>">
         <td><%= a.scheduled_at.slice(11, 16) %><% if (a.booked_via === 'walk_in') { %><br><span class="badge">Walk-in</span><% } %></td>
         <td>
           <a href="/staff/patients/<%= a.patient_id %>"><%= a.patient_name %></a><br><small><%= a.uhs_number %></small>
@@ -45,17 +47,17 @@
         <td>
           <div class="row">
           <% if (a.status === 'in_progress') { %>
-            <a class="btn btn-sm" href="/staff/doctor/appointments/<%= a.id %>/consult">Continue</a>
+            <a class="btn btn-sm" href="/staff/doctor/appointments/<%= a.id %>/consult">Continue <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
           <% } else if ((a.status === 'booked' || a.status === 'checked_in') && isToday) { %>
             <form method="post" action="/staff/doctor/appointments/<%= a.id %>/start">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn btn-sm <%= a.mode !== 'in_person' ? 'btn-accent' : '' %>" type="submit"><%= a.mode === 'in_person' ? 'Start' : 'Start call' %></button>
+              <button class="btn btn-sm <%= a.mode !== 'in_person' ? 'btn-accent' : '' %>" type="submit"><% if (a.mode === 'in_person') { %><i class="fa-solid fa-play" aria-hidden="true"></i> Start<% } else { %><i class="fa-solid fa-video" aria-hidden="true"></i> Start call<% } %></button>
             </form>
           <% } %>
           <% if (a.isLate) { %>
             <form method="post" action="/staff/doctor/appointments/<%= a.id %>/no-show" data-confirm="Mark this patient as a no-show?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-              <button class="btn btn-danger btn-sm" type="submit">No-show</button>
+              <button class="btn btn-danger btn-sm" type="submit"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i> No-show</button>
             </form>
           <% } %>
           </div>

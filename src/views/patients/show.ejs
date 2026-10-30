@@ -6,7 +6,7 @@
 %>
 <div class="page-head">
   <div>
-    <h1><%= p.full_name %></h1>
+    <h1><i class="fa-solid fa-hospital-user h-icon" aria-hidden="true"></i><%= p.full_name %></h1>
     <span class="row">
       <strong><%= p.uhs_number %></strong>
       <span class="badge"><%= p.category %></span>
@@ -16,10 +16,10 @@
   </div>
   <div class="row">
     <% if (isNurse) { %>
-      <a class="btn btn-light" href="/staff/records/patients/<%= p.id %>/edit">Edit details</a>
-      <a class="btn" href="/staff/records/patients/<%= p.id %>/book">Book appointment</a>
+      <a class="btn btn-light" href="/staff/records/patients/<%= p.id %>/edit"><i class="fa-solid fa-pen" aria-hidden="true"></i> Edit details</a>
+      <a class="btn" href="/staff/records/patients/<%= p.id %>/book"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i> Book appointment</a>
     <% } else if (account) { %>
-      <a class="btn" href="/staff/messages/<%= p.id %>/<%= currentUser.id %>">Message patient</a>
+      <a class="btn" href="/staff/messages/<%= p.id %>/<%= currentUser.id %>"><i class="fa-regular fa-comment-dots" aria-hidden="true"></i> Message patient</a>
     <% } %>
   </div>
 </div>
@@ -28,7 +28,7 @@
 
 <div class="grid grid-2">
   <div class="card">
-    <h2>Details</h2>
+    <h2><i class="fa-regular fa-id-card h-icon" aria-hidden="true"></i>Details</h2>
     <dl class="kv">
       <dt>Matric / staff no.</dt><dd><%= p.id_number || '—' %></dd>
       <dt>Date of birth</dt><dd><%= t.fmtDate(p.date_of_birth) %> (<%= t.age(p.date_of_birth) %> yrs)</dd>
@@ -47,7 +47,7 @@
   </div>
 
   <div class="card">
-    <h2>Appointments</h2>
+    <h2><i class="fa-regular fa-calendar-days h-icon" aria-hidden="true"></i>Appointments</h2>
     <% if (!record.appointments.length) { %>
       <p class="empty">No appointments.</p>
     <% } else { %>
@@ -66,7 +66,7 @@
 <% if (isNurse) { %>
 <div class="grid grid-2">
   <div class="card">
-    <h2>Walk-in: add to today's queue</h2>
+    <h2><i class="fa-solid fa-person-walking h-icon" aria-hidden="true"></i>Walk-in: add to today's queue</h2>
     <% if (upcoming.some((a) => a.scheduled_at.slice(0, 10) === t.toDate())) { %>
       <div class="alert alert-info">This patient already has an appointment today. Check them in from the <a href="/staff/records">Today</a> page.</div>
     <% } %>
@@ -77,12 +77,12 @@
         <select id="walk_doctor" name="doctor_id"><option value="">Any available doctor</option>
           <% doctors.forEach((d) => { %><option value="<%= d.id %>"><%= d.full_name %></option><% }) %>
         </select></div>
-      <button class="btn" type="submit">Add to queue</button>
+      <button class="btn" type="submit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add to queue</button>
     </form>
   </div>
 
   <div class="card" id="vitals">
-    <h2>Record vital signs</h2>
+    <h2><i class="fa-solid fa-heart-pulse h-icon beat" aria-hidden="true"></i>Record vital signs</h2>
     <form method="post" action="/staff/records/patients/<%= p.id %>/vitals">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% if (appointmentId) { %>
@@ -99,12 +99,12 @@
         <div class="field"><label for="height_cm">Height (cm)</label><input id="height_cm" type="number" name="height_cm" step="0.1" min="30" max="250"></div>
       </div>
       <div class="field"><label for="vnotes">Notes</label><input id="vnotes" type="text" name="notes"></div>
-      <button class="btn" type="submit">Save vitals</button>
+      <button class="btn" type="submit"><i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> Save vitals</button>
     </form>
   </div>
 
   <div class="card">
-    <h2>Digitise paper file</h2>
+    <h2><i class="fa-solid fa-file-import h-icon" aria-hidden="true"></i>Digitise paper file</h2>
     <p class="muted">Copy important history from the old paper folder<%= p.legacy_file_no ? ` (file ${p.legacy_file_no})` : '' %> into the electronic record.</p>
     <form method="post" action="/staff/records/patients/<%= p.id %>/history">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -116,7 +116,7 @@
           <select id="source" name="source"><% Object.entries(SOURCES).forEach(([k, l]) => { %><option value="<%= k %>"><%= l %></option><% }) %></select></div>
       </div>
       <div class="field"><label for="summary">Summary</label><textarea id="summary" name="summary" required placeholder="e.g. Treated for malaria; Artemether-lumefantrine given"></textarea></div>
-      <button class="btn" type="submit">Add history entry</button>
+      <button class="btn" type="submit"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add history entry</button>
     </form>
     <hr>
     <form method="post" action="/staff/records/patients/<%= p.id %>/digitised" class="row">
@@ -124,15 +124,15 @@
       <% if (p.digitised_at) { %>
         <span class="muted">Marked fully digitised on <%= t.fmtDate(p.digitised_at) %>.</span>
         <input type="hidden" name="undo" value="1">
-        <button class="btn btn-light btn-sm" type="submit">Undo</button>
+        <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Undo</button>
       <% } else { %>
-        <button class="btn btn-accent btn-sm" type="submit">Mark paper file as fully digitised</button>
+        <button class="btn btn-accent btn-sm" type="submit"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Mark paper file as fully digitised</button>
       <% } %>
     </form>
   </div>
 
   <div class="card">
-    <h2>Online access</h2>
+    <h2><i class="fa-solid fa-globe h-icon" aria-hidden="true"></i>Online access</h2>
     <% if (account) { %>
       <p>The patient signs in with <strong><%= account.email %></strong>. If they forget their password, ask the administrator to reset it.</p>
     <% } else { %>
@@ -140,7 +140,7 @@
       <form method="post" action="/staff/records/patients/<%= p.id %>/online-access" data-confirm="Have you verified the patient's identity with their ID card?">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="field"><label for="access_email">Patient's email</label><input id="access_email" type="email" name="email" value="<%= p.email || '' %>" required></div>
-        <button class="btn" type="submit">Enable online access</button>
+        <button class="btn" type="submit"><i class="fa-solid fa-lock-open" aria-hidden="true"></i> Enable online access</button>
       </form>
     <% } %>
   </div>

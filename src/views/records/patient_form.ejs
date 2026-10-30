@@ -5,15 +5,15 @@
   const action = mode === 'new' ? '/staff/records/patients/new' : `/staff/records/patients/${f.id}/edit`;
 %>
 <div class="page-head">
-  <h1><%= mode === 'new' ? 'Register a patient' : `Edit ${f.full_name}` %></h1>
-  <% if (mode === 'edit') { %><a class="btn btn-light" href="/staff/patients/<%= f.id %>">Back to record</a><% } %>
+  <h1><i class="fa-solid <%= mode === 'new' ? 'fa-user-plus' : 'fa-user-pen' %> h-icon" aria-hidden="true"></i><%= mode === 'new' ? 'Register a patient' : `Edit ${f.full_name}` %></h1>
+  <% if (mode === 'edit') { %><a class="btn btn-light" href="/staff/patients/<%= f.id %>"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to record</a><% } %>
 </div>
 
 <%- include('../partials/errors') %>
 
 <% if (duplicates.length) { %>
   <div class="card" style="border-color:#f1d49d">
-    <h2>Possible existing records</h2>
+    <h2><i class="fa-solid fa-triangle-exclamation h-icon" aria-hidden="true"></i>Possible existing records</h2>
     <div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>UHS no.</th><th>Matric / staff no.</th><th>Date of birth</th><th>Phone</th><th>Why it matched</th></tr></thead>
       <tbody>
@@ -32,7 +32,7 @@
 <form method="post" action="<%= action %>" novalidate>
   <input type="hidden" name="_csrf" value="<%= csrfToken %>">
   <div class="card">
-    <h2>Identity</h2>
+    <h2><i class="fa-regular fa-id-card h-icon" aria-hidden="true"></i>Identity</h2>
     <div class="form-grid">
       <div class="field"><label for="full_name">Full name</label><input id="full_name" type="text" name="full_name" value="<%= val('full_name') %>" required></div>
       <div class="field"><label for="category">Category</label>
@@ -51,7 +51,7 @@
   </div>
 
   <div class="card">
-    <h2>Contact</h2>
+    <h2><i class="fa-regular fa-address-book h-icon" aria-hidden="true"></i>Contact</h2>
     <div class="form-grid">
       <div class="field"><label for="phone">Phone</label><input id="phone" type="tel" name="phone" value="<%= val('phone') %>"></div>
       <div class="field"><label for="email">Email <span class="hint">(for reminders)</span></label><input id="email" type="email" name="email" value="<%= val('email') %>"></div>
@@ -62,7 +62,7 @@
   </div>
 
   <div class="card">
-    <h2>Medical summary</h2>
+    <h2><i class="fa-solid fa-notes-medical h-icon" aria-hidden="true"></i>Medical summary</h2>
     <div class="form-grid">
       <div class="field"><label for="blood_group">Blood group</label>
         <select id="blood_group" name="blood_group"><option value="">Unknown</option>
@@ -81,6 +81,6 @@
     <div class="field"><label class="checkbox"><input type="checkbox" name="confirm_not_duplicate" value="1">
       <span>I have checked the records above and this is a <strong>different person</strong>.</span></label></div>
   <% } %>
-  <button class="btn" type="submit"><%= mode === 'new' ? 'Register patient' : 'Save changes' %></button>
+  <button class="btn" type="submit"><i class="<%= mode === 'new' ? 'fa-solid fa-user-plus' : 'fa-regular fa-floppy-disk' %>" aria-hidden="true"></i> <%= mode === 'new' ? 'Register patient' : 'Save changes' %></button>
 </form>
 <%- include('../partials/foot') %>

@@ -1,12 +1,12 @@
 <%- include('../partials/head') %>
 <% const p = record.patient; %>
 <div class="page-head">
-  <div><h1>My medical record</h1><span class="muted">UHS number <strong><%= p.uhs_number %></strong></span></div>
-  <button class="btn btn-light no-print" type="button" data-print>Print</button>
+  <div><h1><i class="fa-solid fa-file-medical h-icon" aria-hidden="true"></i>My medical record</h1><span class="muted">UHS number <strong><%= p.uhs_number %></strong></span></div>
+  <button class="btn btn-light no-print" type="button" data-print><i class="fa-solid fa-print" aria-hidden="true"></i> Print</button>
 </div>
 
 <div class="card">
-  <h2>Summary</h2>
+  <h2><i class="fa-solid fa-clipboard-list h-icon" aria-hidden="true"></i>Summary</h2>
   <dl class="kv">
     <dt>Name</dt><dd><%= p.full_name %></dd>
     <dt>Age / gender</dt><dd><%= t.age(p.date_of_birth) %> years · <%= p.gender %></dd>

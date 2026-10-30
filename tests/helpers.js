@@ -43,8 +43,9 @@ class Client {
     this.cookie = '';
   }
 
-  async request(method, path, form) {
-    const headers = {};
+  async request(method, path, form, extraHeaders = {}) {
+    // Like a browser opening a page, unless the caller says otherwise.
+    const headers = { accept: 'text/html,*/*', ...extraHeaders };
     if (this.cookie) headers.cookie = this.cookie;
     let body;
     if (form) {
@@ -68,10 +69,35 @@ class Client {
   }
 
   /** GET a page to obtain a CSRF token, then POST the form with it. */
-  async post(path, form = {}, tokenPage = '/login') {
+  async post(path, form = {}, tokenPage = '/login', headers = {}) {
     const page = await this.get(tokenPage);
     const m = page.text.match(/name="_csrf" value="([a-f0-9]+)"/);
-    return this.request('POST', path, { _csrf: m ? m[1] : '', ...form });
+    return this.request('POST', path, { _csrf: m ? m[1] : '', ...form }, headers);
+  }
+
+  /** POST JSON as the page's script does (CSRF token in a header); returns the parsed answer. */
+  async postJson(path, data, tokenPage) {
+    const page = await this.get(tokenPage);
+    const token = page.text.match(/name="_csrf" value="([a-f0-9]+)"/)[1];
+    const res = await fetch(this.base + path, {
+      method: 'POST',
+      headers: { cookie: this.cookie, 'content-type': 'application/json', accept: 'application/json', 'x-csrf-token': token },
+      body: JSON.stringify(data),
+      redirect: 'manual',
+    });
+    return { status: res.status, json: await res.json() };
+  }
+
+  /** GET without decoding the body as text (for pictures). */
+  async getBytes(path) {
+    const res = await fetch(this.base + path, { headers: { cookie: this.cookie }, redirect: 'manual' });
+    return { status: res.status, type: res.headers.get('content-type'), bytes: Buffer.from(await res.arrayBuffer()) };
+  }
+
+  /** A request the page's script makes in the background for live updates; returns the parsed JSON. */
+  async live(path) {
+    const r = await this.request('GET', path, null, { 'x-live': '1', accept: 'application/json' });
+    return { ...r, json: r.text ? JSON.parse(r.text) : null };
   }
 
   /** Sign in on the patient website (loginPath '/login') or the staff portal ('/staff/login'). */

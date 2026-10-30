@@ -127,8 +127,8 @@ async function book({ patientId, doctorId = null, mode, date, time, reason, book
 
   const when = t.fmtDateTime(scheduledAt);
   const patient = await db.get('SELECT full_name FROM patients WHERE id = ?', patientId);
-  await notifyPatient(patientId, 'Appointment booked', `Your ${MODES[mode].toLowerCase()} appointment is on ${when}.`, '/patient/appointments');
-  await notifyUser(assigned, 'New appointment', `${patient.full_name} – ${MODES[mode]} on ${when}. Reason: ${reason}`, `/staff/doctor?date=${date}`, { email: false });
+  await notifyPatient(patientId, 'Appointment booked', `Your ${MODES[mode].toLowerCase()} appointment is on ${when}.`, `/patient/appointments#appt-${id}`);
+  await notifyUser(assigned, 'New appointment', `${patient.full_name} – ${MODES[mode]} on ${when}. Reason: ${reason}`, `/staff/doctor?date=${date}#appt-${id}`, { email: false });
   return id;
 }
 
@@ -169,11 +169,16 @@ function canJoin(appt) {
   return nowStr >= opens && t.toDate() === appt.scheduled_at.slice(0, 10);
 }
 
+/** The doctor's queue for the appointment's day, scrolled to the appointment. */
+function queueLink(appt) {
+  return `/staff/doctor?date=${appt.scheduled_at.slice(0, 10)}#appt-${appt.id}`;
+}
+
 async function checkIn(appt) {
   if (appt.status !== 'booked') return false;
   await db.update('appointments', appt.id, { status: 'checked_in', checked_in_at: t.now() });
   if (appt.doctor_id) {
-    await notifyUser(appt.doctor_id, 'Patient waiting', `${appt.patient_name} has checked in.`, '/staff/doctor', { email: false });
+    await notifyUser(appt.doctor_id, 'Patient waiting', `${appt.patient_name} has checked in.`, queueLink(appt), { email: false });
   }
   return true;
 }
@@ -199,5 +204,5 @@ async function markNoShow(appt) {
 module.exports = {
   MODES, ACTIVE, BookingError, JOIN_EARLY_MINUTES, doctorTitle,
   isClinicDay, slotTimes, activeDoctors, dateProblem, availableSlots, pickDoctor,
-  book, walkIn, getFull, canJoin, checkIn, start, cancel, markNoShow,
+  book, walkIn, getFull, canJoin, queueLink, checkIn, start, cancel, markNoShow,
 };

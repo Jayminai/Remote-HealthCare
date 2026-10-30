@@ -35,7 +35,7 @@
     const add = () => rxList.append(template.content.cloneNode(true));
     addBtn.addEventListener('click', add);
     rxList.addEventListener('click', (e) => {
-      if (e.target.matches('[data-remove-row]')) e.target.closest('.rx-row').remove();
+      if (e.target.closest('[data-remove-row]')) e.target.closest('.rx-row').remove(); // the button holds an icon
     });
     if (!rxList.children.length) add();
   }
