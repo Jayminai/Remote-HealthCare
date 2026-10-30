@@ -6,7 +6,7 @@
 <div class="page-head">
   <div><h1>Records office</h1><span class="muted"><%= t.fmtDate(t.toDate()) %></span></div>
   <div class="row">
-    <a class="btn" href="/records/patients/new">Register patient</a>
+    <a class="btn" href="/staff/records/patients/new">Register patient</a>
   </div>
 </div>
 
@@ -20,7 +20,7 @@
 
 <div class="card">
   <h2>Find a patient (walk-in, phone booking, vitals)</h2>
-  <form method="get" action="/records/patients" class="row">
+  <form method="get" action="/staff/records/patients" class="row">
     <input type="search" name="q" placeholder="Name, UHS number, matric/staff number, phone or old file number" style="flex:1; min-width:220px">
     <button class="btn" type="submit">Search</button>
   </form>
@@ -38,7 +38,7 @@
     <% list.forEach((a) => { %>
       <tr>
         <td><%= a.scheduled_at.slice(11, 16) %><br><span class="badge"><%= { online: 'Online', phone: 'Phone', walk_in: 'Walk-in' }[a.booked_via] %></span></td>
-        <td><a href="/patients/<%= a.patient_id %>"><%= a.patient_name %></a><br><small><%= a.uhs_number %></small></td>
+        <td><a href="/staff/patients/<%= a.patient_id %>"><%= a.patient_name %></a><br><small><%= a.uhs_number %></small></td>
         <td><%- include('../partials/mode', { m: a.mode }) %></td>
         <td><%= a.doctor_name || 'Any doctor' %></td>
         <td>
@@ -48,22 +48,22 @@
         <td>
           <div class="row">
             <% if (a.status === 'booked' && a.mode === 'in_person') { %>
-              <form method="post" action="/records/appointments/<%= a.id %>/check-in">
+              <form method="post" action="/staff/records/appointments/<%= a.id %>/check-in">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="btn btn-sm" type="submit">Check in</button>
               </form>
             <% } %>
             <% if (['booked', 'checked_in'].includes(a.status) && a.mode === 'in_person') { %>
-              <a class="btn btn-light btn-sm" href="/patients/<%= a.patient_id %>?appointment=<%= a.id %>#vitals">Vitals</a>
+              <a class="btn btn-light btn-sm" href="/staff/patients/<%= a.patient_id %>?appointment=<%= a.id %>#vitals">Vitals</a>
             <% } %>
             <% if (a.isLate) { %>
-              <form method="post" action="/records/appointments/<%= a.id %>/no-show" data-confirm="Mark as no-show?">
+              <form method="post" action="/staff/records/appointments/<%= a.id %>/no-show" data-confirm="Mark as no-show?">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="btn btn-danger btn-sm" type="submit">No-show</button>
               </form>
             <% } %>
             <% if (['booked', 'checked_in'].includes(a.status)) { %>
-              <form method="post" action="/records/appointments/<%= a.id %>/cancel" data-confirm="Cancel this appointment? The patient will be notified.">
+              <form method="post" action="/staff/records/appointments/<%= a.id %>/cancel" data-confirm="Cancel this appointment? The patient will be notified.">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button class="btn btn-danger btn-sm" type="submit">Cancel</button>
               </form>

@@ -1,0 +1,100 @@
+<%- include('../partials/head', { fullWidth: true }) %>
+<%- include('../partials/page_banner', { intro: 'Booking, remote consultations, records and follow-up — in one place.' }) %>
+<%- include('../partials/sections/services') %>
+
+<section class="section bg-white" id="consultation-types">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Consultation Types</span>
+      <h2 class="section-title">Choose How You See the Doctor</h2>
+      <p>You choose the type when you book. The doctor may ask you to come in if they cannot safely assess you remotely.</p>
+    </div>
+    <div class="mode-grid">
+      <div class="mode-card">
+        <span class="mode-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></span>
+        <h3>Video Call</h3>
+        <p>See the doctor from your phone or laptop, in a private room created for your appointment.</p>
+        <ul class="checks">
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> No app to install — it runs in the browser</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Show a rash, a wound or your medicines</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Join from 15 minutes before</li>
+        </ul>
+      </div>
+      <div class="mode-card featured">
+        <span class="mode-icon"><i class="fa-solid fa-phone" aria-hidden="true"></i></span>
+        <h3>Audio Call</h3>
+        <p>Voice only. The best choice when your network is weak or your data is limited.</p>
+        <ul class="checks">
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Uses far less data than video</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Works on most mobile networks</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Same notes and prescriptions as video</li>
+        </ul>
+      </div>
+      <div class="mode-card">
+        <span class="mode-icon"><i class="fa-solid fa-hospital" aria-hidden="true"></i></span>
+        <h3>In Person</h3>
+        <p>Visit the UHS clinic at your booked time. The records office checks you in and a nurse takes your vital signs.</p>
+        <ul class="checks">
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> For examinations, injections and tests</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> A booked time instead of a long queue</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Everything recorded in the same file</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section bg-gradient-rev">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Is Remote Right for Me?</span>
+      <h2 class="section-title">When to Consult Online and When to Come In</h2>
+    </div>
+    <div class="compare-grid">
+      <div class="compare-card good">
+        <h3><i class="fa-solid fa-laptop-medical" aria-hidden="true"></i> Usually suitable remotely</h3>
+        <ul class="checks">
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Follow-up visits</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Review of test results</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Mild illnesses — cold, mild fever, minor skin problems</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Prescription renewals for long-term conditions</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Mental-health and general health advice</li>
+        </ul>
+      </div>
+      <div class="compare-card in-person">
+        <h3><i class="fa-solid fa-hospital-user" aria-hidden="true"></i> Come to the clinic if you need</h3>
+        <ul class="checks">
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> A physical examination</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> An injection or a dressing</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> A laboratory test</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Care for severe symptoms</li>
+        </ul>
+        <p class="compare-warn"><i class="fa-solid fa-truck-medical" aria-hidden="true"></i> Emergencies: do not book — go straight to the UHS emergency unit.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section bg-white">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">For UHS Staff</span>
+      <h2 class="section-title">Tools for Every Team at the Clinic</h2>
+    </div>
+    <div class="mini-grid staff-grid">
+      <div class="mini-card">
+        <span><i class="fa-solid fa-stethoscope" aria-hidden="true"></i></span>
+        <div><h3>Doctors</h3><p>A daily queue with waiting times, the full patient record during the call, consultation notes, prescriptions, follow-up dates and messages.</p></div>
+      </div>
+      <div class="mini-card">
+        <span><i class="fa-solid fa-clipboard-user" aria-hidden="true"></i></span>
+        <div><h3>Nurses and Records Office</h3><p>Patient registration with duplicate checks, walk-ins and phone bookings, check-in, vital signs and digitising paper folders.</p></div>
+      </div>
+      <div class="mini-card">
+        <span><i class="fa-solid fa-chart-column" aria-hidden="true"></i></span>
+        <div><h3>Administrators</h3><p>A service dashboard with peak hours, waiting times and workload, staff accounts, the email outbox and the audit log.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+<%- include('../partials/foot') %>

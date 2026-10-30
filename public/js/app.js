@@ -15,6 +15,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const thread = document.querySelector('.thread');
   if (thread) thread.scrollTop = thread.scrollHeight;
 
+  // Collapsible main menu on small screens.
+  const header = document.querySelector('[data-header]');
+  const navToggle = document.querySelector('[data-nav-toggle]');
+  if (header && navToggle) {
+    navToggle.addEventListener('click', () => {
+      const open = header.classList.toggle('open');
+      navToggle.setAttribute('aria-expanded', String(open));
+    });
+  }
+
+  // Staff portal: slide-in sidebar on small screens.
+  const shell = document.querySelector('[data-staff-shell]');
+  const sidebarToggle = document.querySelector('[data-staff-toggle]');
+  const backdrop = document.querySelector('[data-staff-close]');
+  if (shell && sidebarToggle && backdrop) {
+    const setOpen = (open) => {
+      shell.classList.toggle('menu-open', open);
+      backdrop.hidden = !open;
+      sidebarToggle.setAttribute('aria-expanded', String(open));
+    };
+    sidebarToggle.addEventListener('click', () => setOpen(!shell.classList.contains('menu-open')));
+    backdrop.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+  }
+
   // Reveal-on-click panels: <button data-toggle="#id">
   document.querySelectorAll('[data-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => {

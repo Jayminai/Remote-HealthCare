@@ -1,0 +1,20 @@
+<%# Live totals band. Needs: numbers { patients, completed, remote, doctors } %>
+<%
+  const fmt = (n) => Number(n || 0).toLocaleString('en-NG');
+  const remoteShare = numbers.completed ? Math.round((numbers.remote / numbers.completed) * 100) : 0;
+%>
+<section class="numbers">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">The Service in Numbers</span>
+      <h2 class="section-title">Our Commitment to Faster Care</h2>
+      <p>Live figures from the platform. Only totals are shown — never information about individual patients.</p>
+    </div>
+    <div class="number-grid">
+      <div><strong><%= fmt(numbers.patients) %></strong><span>Patients on record</span></div>
+      <div><strong><%= fmt(numbers.completed) %></strong><span>Consultations completed</span></div>
+      <div><strong><%= remoteShare %>%</strong><span>Handled remotely</span></div>
+      <div><strong><%= fmt(numbers.doctors) %></strong><span>Doctors available</span></div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,78 @@
+<%
+  const role = currentUser ? currentUser.role : null;
+  // Public site header. Signed-in patients get their own menu; visitors and staff see the public pages.
+  const links = role === 'patient'
+    ? [['/patient', 'Home'], ['/patient/book', 'Book'], ['/patient/appointments', 'Appointments'], ['/patient/records', 'My record'], ['/messages', 'Messages', unreadMessages]]
+    : [['/', 'Home'], ['/about', 'About'], ['/services', 'Services'], ['/how-it-works', 'How it works'], ['/faq', 'FAQs'], ...(role ? [] : [['/login', 'Sign in']])];
+  // The active link is the longest one that matches the current path.
+  const activeHref = links.map(([h]) => h)
+    .filter((h) => currentPath === h || (h !== '/' && currentPath.startsWith(h + '/')))
+    .sort((a, b) => b.length - a.length)[0];
+  const isActive = (href) => href === activeHref;
+  const roleNames = { patient: 'Patient', doctor: 'Doctor', nurse: 'Nurse / Records', admin: 'Administrator' };
+  const initials = currentUser ? currentUser.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() : '';
+  // Signed-in patients already have their main actions in the menu; staff get a way back to their portal.
+  const cta = role && role !== 'patient' ? ['/staff', 'Staff Portal']
+    : !role && currentPath !== '/register' ? ['/register', 'Create Account'] : null;
+  const wide = typeof fullWidth !== 'undefined' && fullWidth;
+%><!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · UHS Telemedicine</title>
+  <link rel="icon" type="image/png" href="/static/img/ui-crest.png">
+  <link rel="stylesheet" href="<%= asset('vendor/fontawesome/css/all.min.css') %>">
+  <link rel="stylesheet" href="<%= asset('css/style.css') %>">
+  <script src="<%= asset('js/app.js') %>" defer></script>
+  <% (typeof scripts !== 'undefined' ? scripts : []).forEach((src) => { %>
+  <script src="<%= src.startsWith('/static/') ? asset(src.slice(8)) : src %>" defer></script>
+  <% }) %>
+</head>
+<body>
+<div class="top-info no-print">
+  <div class="wrap">
+    <div>
+      <span><i class="fa-solid fa-location-dot" aria-hidden="true"></i> <%= clinicName %></span>
+      <span class="hide-sm"><i class="fa-regular fa-clock" aria-hidden="true"></i> <%= clinicHours %></span>
+    </div>
+    <div class="right hide-sm"><i class="fa-solid fa-truck-medical" aria-hidden="true"></i> Emergency? Go straight to the UHS emergency unit</div>
+  </div>
+</div>
+<header class="site-header" data-header>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <img class="logo" src="/static/img/ui-crest.png" alt="" width="46" height="46">
+      <span class="brand-text"><strong>UHS <em>Telemedicine</em></strong><small>University of Ibadan</small></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" data-nav-toggle><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+    <nav class="nav" aria-label="Main" id="main-nav">
+      <% links.forEach(([href, label, badge]) => { %>
+        <a href="<%= href %>" class="<%= isActive(href) ? 'active' : '' %>"><%= label %><% if (badge) { %><span class="pill"><%= badge %></span><% } %></a>
+      <% }) %>
+      <% if (cta) { %><a class="nav-cta" href="<%= cta[0] %>"><%= cta[1] %></a><% } %>
+    </nav>
+    <div class="header-actions">
+      <% if (currentUser) { %>
+        <a href="<%= role === 'patient' ? '/notifications' : '/staff/notifications' %>" class="icon-link <%= currentPath === '/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
+          <i class="fa-regular fa-bell" aria-hidden="true"></i><% if (unreadNotifications) { %><span class="pill"><%= unreadNotifications %></span><% } %>
+        </a>
+        <div class="user-box">
+          <span class="avatar" aria-hidden="true"><%= initials %></span>
+          <span class="user-meta">
+            <a href="<%= role === 'patient' ? '/account/profile' : '/staff/account/password' %>"><%= currentUser.full_name %></a>
+            <small><%= roleNames[role] %></small>
+          </span>
+          <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="signout" type="submit" title="Sign out" aria-label="Sign out"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></form>
+        </div>
+      <% } %>
+      <% if (cta) { %><a class="header-cta" href="<%= cta[0] %>"><%= cta[1] %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a><% } %>
+    </div>
+  </div>
+</header>
+<main class="<%= wide ? 'site-main' : 'container' %>">
+<% if (flash) { %>
+  <% if (wide) { %><div class="wrap flash-wrap"><% } %>
+  <div class="alert alert-<%= flash.type %>" role="status"><%= flash.message %></div>
+  <% if (wide) { %></div><% } %>
+<% } %>

@@ -2,11 +2,11 @@
 <%
   const f = form || {};
   const val = (k) => (f[k] == null ? '' : f[k]);
-  const action = mode === 'new' ? '/records/patients/new' : `/records/patients/${f.id}/edit`;
+  const action = mode === 'new' ? '/staff/records/patients/new' : `/staff/records/patients/${f.id}/edit`;
 %>
 <div class="page-head">
   <h1><%= mode === 'new' ? 'Register a patient' : `Edit ${f.full_name}` %></h1>
-  <% if (mode === 'edit') { %><a class="btn btn-light" href="/patients/<%= f.id %>">Back to record</a><% } %>
+  <% if (mode === 'edit') { %><a class="btn btn-light" href="/staff/patients/<%= f.id %>">Back to record</a><% } %>
 </div>
 
 <%- include('../partials/errors') %>
@@ -19,7 +19,7 @@
       <tbody>
       <% duplicates.forEach(({ patient: d, reasons }) => { %>
         <tr>
-          <td><a href="/patients/<%= d.id %>" target="_blank" rel="noopener"><%= d.full_name %></a></td>
+          <td><a href="/staff/patients/<%= d.id %>" target="_blank" rel="noopener"><%= d.full_name %></a></td>
           <td><%= d.uhs_number %></td><td><%= d.id_number || '—' %></td><td><%= t.fmtDate(d.date_of_birth) %></td><td><%= d.phone || '—' %></td>
           <td><% reasons.forEach((r) => { %><span class="badge badge-warn"><%= r %></span> <% }) %></td>
         </tr>

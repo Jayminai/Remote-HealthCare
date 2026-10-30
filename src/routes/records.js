@@ -88,7 +88,7 @@ router.post('/patients/new', async (req, res) => {
   const id = await patients.createPatient(data, req.user.id);
   await audit(req, 'patient_registered', 'patient', id, duplicates.length ? { overrodeDuplicateWarning: duplicates.map((d) => d.patient.id) } : null);
   req.flash('success', 'Patient registered.');
-  res.redirect(`/patients/${id}`);
+  res.redirect(`/staff/patients/${id}`);
 });
 
 router.get('/patients/:id/edit', async (req, res) => {
@@ -114,7 +114,7 @@ router.post('/patients/:id/edit', async (req, res) => {
   if (p.user_id) await db.update('users', p.user_id, { full_name: data.full_name });
   await audit(req, 'patient_updated', 'patient', p.id);
   req.flash('success', 'Patient details updated.');
-  res.redirect(`/patients/${p.id}`);
+  res.redirect(`/staff/patients/${p.id}`);
 });
 
 // ---- Digitising paper records ---------------------------------------------
@@ -130,12 +130,12 @@ router.post('/patients/:id/history', async (req, res) => {
   };
   if (!t.isValidDate(entry.entry_date) || entry.entry_date > t.toDate() || !ENTRY_TYPES[entry.entry_type] || !SOURCES[entry.source] || entry.summary.length < 3) {
     req.flash('error', 'History entry not saved: enter a valid past date, type, source and summary.');
-    return res.redirect(`/patients/${p.id}#history`);
+    return res.redirect(`/staff/patients/${p.id}#history`);
   }
   const id = await db.insert('record_entries', { ...entry, patient_id: p.id, recorded_by: req.user.id });
   await audit(req, 'history_entry_added', 'record_entry', id, { patient: p.id });
   req.flash('success', 'History entry added.');
-  res.redirect(`/patients/${p.id}#history`);
+  res.redirect(`/staff/patients/${p.id}#history`);
 });
 
 router.post('/patients/:id/digitised', async (req, res) => {
@@ -144,7 +144,7 @@ router.post('/patients/:id/digitised', async (req, res) => {
   await db.update('patients', p.id, { digitised_at: req.body.undo ? null : t.now() });
   await audit(req, req.body.undo ? 'paper_file_digitised_undone' : 'paper_file_digitised', 'patient', p.id);
   req.flash('success', req.body.undo ? 'Marked as not fully digitised.' : 'Paper file marked as fully digitised.');
-  res.redirect(`/patients/${p.id}`);
+  res.redirect(`/staff/patients/${p.id}`);
 });
 
 // ---- Vital signs ------------------------------------------------------------
@@ -164,7 +164,7 @@ router.post('/patients/:id/vitals', async (req, res) => {
   };
   const bad = Object.entries(ranges).filter(([k, [lo, hi]]) => vit[k] != null && (vit[k] < lo || vit[k] > hi)).map(([k]) => k);
   const anyValue = Object.keys(ranges).some((k) => vit[k] != null);
-  const back = v.localPath(req.body.return_to, `/patients/${p.id}`);
+  const back = v.localPath(req.body.return_to, `/staff/patients/${p.id}`);
   if (!anyValue || bad.length) {
     req.flash('error', bad.length ? `Check these values: ${bad.join(', ').replace(/_/g, ' ')}.` : 'Enter at least one measurement.');
     return res.redirect(back);
@@ -184,16 +184,16 @@ router.post('/patients/:id/online-access', async (req, res) => {
   if (!p) return;
   if (p.user_id) {
     req.flash('error', 'This patient already has online access.');
-    return res.redirect(`/patients/${p.id}`);
+    return res.redirect(`/staff/patients/${p.id}`);
   }
   const email = v.str(req.body.email, 120).toLowerCase();
   if (!v.isEmail(email)) {
     req.flash('error', 'Enter a valid email address.');
-    return res.redirect(`/patients/${p.id}`);
+    return res.redirect(`/staff/patients/${p.id}`);
   }
   if (await db.get('SELECT id FROM users WHERE email = ?', email)) {
     req.flash('error', 'That email is already used by another account.');
-    return res.redirect(`/patients/${p.id}`);
+    return res.redirect(`/staff/patients/${p.id}`);
   }
   const tempPassword = `Uhs${crypto.randomInt(100000, 999999)}${crypto.randomBytes(2).toString('hex')}`;
   await db.tx(async () => {
@@ -204,7 +204,7 @@ router.post('/patients/:id/online-access', async (req, res) => {
     await db.update('patients', p.id, { user_id: userId, email, updated_at: t.now() });
   });
   await audit(req, 'patient_online_access_enabled', 'patient', p.id);
-  res.render('records/access_created', { title: 'Online access enabled', patient: p, email, tempPassword, appUrl: config.appUrl });
+  res.render('records/access_created', { title: 'Online access enabled', patient: p, email, tempPassword, signInUrl: `${config.appUrl}/login` });
 });
 
 // ---- Appointments: phone bookings, walk-ins, check-in -----------------------
@@ -244,7 +244,7 @@ router.post('/patients/:id/book', async (req, res) => {
     });
     await audit(req, 'appointment_booked', 'appointment', id, { onBehalfOf: p.id });
     req.flash('success', `Appointment booked for ${p.full_name} on ${t.fmtDateTime(`${form.date} ${form.time}`)}.`);
-    res.redirect(`/patients/${p.id}`);
+    res.redirect(`/staff/patients/${p.id}`);
   } catch (err) {
     if (!(err instanceof appts.BookingError)) throw err;
     res.status(400).render('records/book', await bookView(p, form, [err.message]));
@@ -258,11 +258,11 @@ router.post('/patients/:id/walk-in', async (req, res) => {
   const doctorId = v.int(req.body.doctor_id);
   if (reason.length < 3) {
     req.flash('error', 'Enter the reason for the walk-in visit.');
-    return res.redirect(`/patients/${p.id}`);
+    return res.redirect(`/staff/patients/${p.id}`);
   }
   if (doctorId && !(await appts.activeDoctors()).some((d) => d.id === doctorId)) {
     req.flash('error', 'Choose a valid doctor.');
-    return res.redirect(`/patients/${p.id}`);
+    return res.redirect(`/staff/patients/${p.id}`);
   }
   const active = await db.get(
     "SELECT id FROM appointments WHERE patient_id = ? AND status IN ('checked_in','in_progress') AND scheduled_at LIKE ?",
@@ -270,12 +270,12 @@ router.post('/patients/:id/walk-in', async (req, res) => {
   );
   if (active) {
     req.flash('error', 'This patient is already waiting or being seen today.');
-    return res.redirect('/records');
+    return res.redirect('/staff/records');
   }
   const id = await appts.walkIn({ patientId: p.id, doctorId, reason, createdBy: req.user.id });
   await audit(req, 'walk_in_registered', 'appointment', id);
   req.flash('success', `${p.full_name} added to today's queue. Record their vital signs below.`);
-  res.redirect('/records');
+  res.redirect('/staff/records');
 });
 
 router.post('/appointments/:id/check-in', async (req, res) => {
@@ -287,7 +287,7 @@ router.post('/appointments/:id/check-in', async (req, res) => {
     await audit(req, 'appointment_checked_in', 'appointment', a.id);
     req.flash('success', `${a.patient_name} checked in.`);
   }
-  res.redirect('/records');
+  res.redirect('/staff/records');
 });
 
 router.post('/appointments/:id/no-show', async (req, res) => {
@@ -300,7 +300,7 @@ router.post('/appointments/:id/no-show', async (req, res) => {
   } else {
     req.flash('error', 'Only booked appointments whose time has passed can be marked as no-show.');
   }
-  res.redirect('/records');
+  res.redirect('/staff/records');
 });
 
 router.post('/appointments/:id/cancel', async (req, res) => {
@@ -313,7 +313,7 @@ router.post('/appointments/:id/cancel', async (req, res) => {
   } else {
     req.flash('error', 'This appointment can no longer be cancelled.');
   }
-  res.redirect(v.localPath(req.body.return_to, '/records'));
+  res.redirect(v.localPath(req.body.return_to, '/staff/records'));
 });
 
 module.exports = router;

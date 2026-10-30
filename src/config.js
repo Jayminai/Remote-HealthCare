@@ -54,4 +54,8 @@ if (config.isProduction && config.sessionSecret === 'dev-only-secret-change-me')
   throw new Error('SESSION_SECRET must be set in production.');
 }
 
+if (config.isProduction && !process.env.APP_URL) {
+  console.warn('APP_URL is not set: links in emails (such as password resets) will point to localhost.');
+}
+
 module.exports = config;

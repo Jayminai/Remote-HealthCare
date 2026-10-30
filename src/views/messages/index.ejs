@@ -13,7 +13,7 @@
         <% threads.forEach((th) => { %>
           <tr>
             <td>
-              <a href="/messages/<%= th.patient_id %>/<%= th.doctor_id %>"><%= isPatient ? th.doctor_name : th.patient_name %></a>
+              <a href="<%= base %>/messages/<%= th.patient_id %>/<%= th.doctor_id %>"><%= isPatient ? th.doctor_name : th.patient_name %></a>
               <% if (th.unread) { %><span class="pill"><%= th.unread %></span><% } %>
               <% if (!isPatient) { %><br><small><%= th.uhs_number %></small><% } %>
             </td>
@@ -34,14 +34,14 @@
       <% } else { %>
         <ul>
           <% doctors.forEach((d) => { %>
-            <li><a href="/messages/<%= patient.id %>/<%= d.id %>"><%= d.full_name %></a><%= d.specialty ? ` – ${d.specialty}` : '' %></li>
+            <li><a href="<%= base %>/messages/<%= patient.id %>/<%= d.id %>"><%= d.full_name %></a><%= d.specialty ? ` – ${d.specialty}` : '' %></li>
           <% }) %>
         </ul>
       <% } %>
       <p class="muted">Messages are for non-urgent questions. Doctors usually reply within one working day.</p>
     <% } else { %>
       <h2>Message a patient</h2>
-      <p class="muted">Open a patient's record from <a href="/doctor/patients">Patients</a> and choose "Message patient".</p>
+      <p class="muted">Open a patient's record from <a href="/staff/doctor/patients">Patients</a> and choose "Message patient".</p>
     <% } %>
   </div>
 </div>

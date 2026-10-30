@@ -1,0 +1,25 @@
+<%# Blue "how it works" strip with a photo. Optional: showGuide (adds a link to the full guide) %>
+<section class="quick-strip">
+  <div class="strip-content">
+    <span class="eyebrow">How It Works</span>
+    <h2 class="section-title">Book a Consultation in a Few Minutes</h2>
+    <ol class="steps">
+      <li><strong>Create your account</strong><span>Use your matric or staff number.</span></li>
+      <li><strong>Choose a time</strong><span>Video, audio or in person.</span></li>
+      <li><strong>Join the call</strong><span>The Join button appears 15 minutes before.</span></li>
+      <li><strong>Get your notes</strong><span>Diagnosis and prescription in your record.</span></li>
+    </ol>
+    <% const bookHref = !currentUser ? '/register' : currentUser.role === 'patient' ? '/patient/book' : null; %>
+    <div class="row">
+      <% if (bookHref) { %>
+        <a class="btn btn-accent btn-lg" href="<%= bookHref %>">Book Appointment <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } %>
+      <% if (typeof showGuide !== 'undefined' && showGuide) { %>
+        <a class="btn btn-white btn-lg" href="/how-it-works">Read the full guide</a>
+      <% } %>
+    </div>
+  </div>
+  <div class="strip-photo">
+    <img src="/static/img/login.jpg" alt="A smiling UHS doctor at her desk" width="1000" height="1500" loading="lazy">
+  </div>
+</section>

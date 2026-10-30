@@ -1,7 +1,1 @@
-</main>
-<footer class="footer">
-  <%= clinicName %> · Telemedicine Platform ·
-  In an emergency, do not use this service — go to the UHS emergency unit or call the clinic.
-</footer>
-</body>
-</html>
+<% if (portal === 'staff') { %><%- include('staff_foot') %><% } else { %><%- include('public_foot') %><% } %>

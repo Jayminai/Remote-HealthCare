@@ -1,0 +1,36 @@
+<%- include('../partials/head') %>
+<div class="auth-split">
+  <div class="auth-visual">
+    <img class="auth-logo" src="/static/img/ui-logo.png" alt="University of Ibadan" width="600" height="200">
+    <h2>Choose a new password</h2>
+    <p>Pick something you have not used here before.</p>
+    <ul class="checks">
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> At least 8 characters, with letters and numbers</li>
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> You will be signed out on other devices</li>
+    </ul>
+  </div>
+  <div class="auth-form">
+    <span class="eyebrow">Patient account</span>
+    <h1>Reset your password</h1>
+    <% if (!valid) { %>
+      <div class="alert alert-error" role="alert">This link has expired or has already been used.</div>
+      <p class="muted">Reset links work once and expire after 1 hour. You can ask for a new one.</p>
+      <a class="btn" href="/forgot-password">Send a new link</a>
+    <% } else { %>
+      <%- include('../partials/errors') %>
+      <form method="post" action="/reset-password/<%= token %>" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="password">New password <span class="hint">(8+ characters, letters and numbers)</span></label>
+          <input id="password" type="password" name="password" autocomplete="new-password" required autofocus>
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm new password</label>
+          <input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password" required>
+        </div>
+        <button class="btn btn-block" type="submit">Save new password</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

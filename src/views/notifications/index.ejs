@@ -2,7 +2,7 @@
 <div class="page-head">
   <h1>Notifications</h1>
   <% if (list.some((n) => !n.read_at)) { %>
-    <form method="post" action="/notifications/read-all">
+    <form method="post" action="<%= base %>/notifications/read-all">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <button class="btn btn-light" type="submit">Mark all as read</button>
     </form>
@@ -21,7 +21,7 @@
         <td style="white-space:nowrap"><small><%= t.fmtDateTime(n.created_at) %></small></td>
         <td style="width:1%">
           <% if (n.link) { %>
-          <form method="post" action="/notifications/<%= n.id %>/open">
+          <form method="post" action="<%= base %>/notifications/<%= n.id %>/open">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <button class="btn btn-light btn-sm" type="submit">Open</button>
           </form>

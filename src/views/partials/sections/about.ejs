@@ -1,0 +1,28 @@
+<%# "About the service" block with two photos. Optional: link = [href, label] for the button %>
+<% const aboutLink = typeof link !== 'undefined' ? link : ['/about', 'Read more']; %>
+<section class="section bg-white">
+  <div class="wrap about2">
+    <div class="about2-images">
+      <img src="/static/img/doctor-tablet.jpg" alt="A UHS doctor using a tablet" width="1000" height="1500" loading="lazy">
+      <img src="/static/img/doctor-patient.jpg" alt="A doctor going through results with a patient" width="1600" height="1067" loading="lazy">
+      <div class="quote-box">
+        <i class="fa-solid fa-quote-left" aria-hidden="true"></i>
+        <p>Good care starts with being seen on time.</p>
+        <small>— University Health Service</small>
+      </div>
+    </div>
+    <div>
+      <span class="eyebrow">About the Service</span>
+      <h2 class="section-title">Bringing UHS Care Closer to You</h2>
+      <p>Morning queues, missing paper folders and repeat trips to the clinic make it harder to get care. The
+        telemedicine platform lets suitable cases be handled remotely, and gives every patient one electronic file
+        that the doctor can see during the consultation.</p>
+      <ul class="checks">
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Book a free slot online — no phone calls, no waiting just to book.</li>
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Consult by video, or audio only when the network is weak.</li>
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Notes, prescriptions and follow-ups kept in one secure record.</li>
+      </ul>
+      <a class="btn btn-accent btn-lg" href="<%= aboutLink[0] %>"><%= aboutLink[1] %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+    </div>
+  </div>
+</section>

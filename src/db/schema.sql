@@ -193,3 +193,15 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires INTEGER NOT NULL,  -- milliseconds since epoch
   data    TEXT NOT NULL
 );
+
+-- One-time "forgot password" links for patients. Only a hash of the token is stored,
+-- so the link cannot be rebuilt from the database.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  used_at    TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);

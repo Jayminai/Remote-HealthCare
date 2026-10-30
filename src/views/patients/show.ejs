@@ -16,10 +16,10 @@
   </div>
   <div class="row">
     <% if (isNurse) { %>
-      <a class="btn btn-light" href="/records/patients/<%= p.id %>/edit">Edit details</a>
-      <a class="btn" href="/records/patients/<%= p.id %>/book">Book appointment</a>
+      <a class="btn btn-light" href="/staff/records/patients/<%= p.id %>/edit">Edit details</a>
+      <a class="btn" href="/staff/records/patients/<%= p.id %>/book">Book appointment</a>
     <% } else if (account) { %>
-      <a class="btn" href="/messages/<%= p.id %>/<%= currentUser.id %>">Message patient</a>
+      <a class="btn" href="/staff/messages/<%= p.id %>/<%= currentUser.id %>">Message patient</a>
     <% } %>
   </div>
 </div>
@@ -68,9 +68,9 @@
   <div class="card">
     <h2>Walk-in: add to today's queue</h2>
     <% if (upcoming.some((a) => a.scheduled_at.slice(0, 10) === t.toDate())) { %>
-      <div class="alert alert-info">This patient already has an appointment today. Check them in from the <a href="/records">Today</a> page.</div>
+      <div class="alert alert-info">This patient already has an appointment today. Check them in from the <a href="/staff/records">Today</a> page.</div>
     <% } %>
-    <form method="post" action="/records/patients/<%= p.id %>/walk-in">
+    <form method="post" action="/staff/records/patients/<%= p.id %>/walk-in">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field"><label for="walk_reason">Reason for visit</label><input id="walk_reason" type="text" name="reason" required></div>
       <div class="field"><label for="walk_doctor">Doctor</label>
@@ -83,11 +83,11 @@
 
   <div class="card" id="vitals">
     <h2>Record vital signs</h2>
-    <form method="post" action="/records/patients/<%= p.id %>/vitals">
+    <form method="post" action="/staff/records/patients/<%= p.id %>/vitals">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% if (appointmentId) { %>
         <input type="hidden" name="appointment_id" value="<%= appointmentId %>">
-        <input type="hidden" name="return_to" value="/records">
+        <input type="hidden" name="return_to" value="/staff/records">
       <% } %>
       <div class="form-grid">
         <div class="field"><label for="systolic">BP systolic</label><input id="systolic" type="number" name="systolic" min="50" max="260"></div>
@@ -106,7 +106,7 @@
   <div class="card">
     <h2>Digitise paper file</h2>
     <p class="muted">Copy important history from the old paper folder<%= p.legacy_file_no ? ` (file ${p.legacy_file_no})` : '' %> into the electronic record.</p>
-    <form method="post" action="/records/patients/<%= p.id %>/history">
+    <form method="post" action="/staff/records/patients/<%= p.id %>/history">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="form-grid">
         <div class="field"><label for="entry_date">Date</label><input id="entry_date" type="date" name="entry_date" max="<%= t.toDate() %>" required></div>
@@ -119,7 +119,7 @@
       <button class="btn" type="submit">Add history entry</button>
     </form>
     <hr>
-    <form method="post" action="/records/patients/<%= p.id %>/digitised" class="row">
+    <form method="post" action="/staff/records/patients/<%= p.id %>/digitised" class="row">
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <% if (p.digitised_at) { %>
         <span class="muted">Marked fully digitised on <%= t.fmtDate(p.digitised_at) %>.</span>
@@ -137,7 +137,7 @@
       <p>The patient signs in with <strong><%= account.email %></strong>. If they forget their password, ask the administrator to reset it.</p>
     <% } else { %>
       <p>Create an online account for this <strong>existing</strong> record after checking the patient's ID card. A temporary password will be shown once.</p>
-      <form method="post" action="/records/patients/<%= p.id %>/online-access" data-confirm="Have you verified the patient's identity with their ID card?">
+      <form method="post" action="/staff/records/patients/<%= p.id %>/online-access" data-confirm="Have you verified the patient's identity with their ID card?">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="field"><label for="access_email">Patient's email</label><input id="access_email" type="email" name="email" value="<%= p.email || '' %>" required></div>
         <button class="btn" type="submit">Enable online access</button>

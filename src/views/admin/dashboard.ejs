@@ -12,7 +12,7 @@
 %>
 <div class="page-head">
   <div><h1>Service dashboard</h1><span class="muted">Last <%= days %> days · <%= t.fmtDate(t.toDate()) %></span></div>
-  <form method="get" action="/admin" class="row">
+  <form method="get" action="/staff/admin" class="row">
     <label for="days" style="margin:0">Period</label>
     <select id="days" name="days" style="width:auto">
       <% [7, 30, 90].forEach((d) => { %><option value="<%= d %>" <%= d === days ? 'selected' : '' %>>Last <%= d %> days</option><% }) %>
@@ -21,7 +21,7 @@
   </form>
 </div>
 
-<div class="stats">
+<div class="stats stats-3">
   <div class="stat"><div class="value"><%= range.total || 0 %></div><div class="label">Appointments</div></div>
   <div class="stat"><div class="value"><%= pct(range.remote, range.total) %>%</div><div class="label">Handled remotely (video/audio)</div></div>
   <div class="stat"><div class="value"><%= waitOf('in_person') ? waitOf('in_person').avg_min + ' min' : '—' %></div><div class="label">Avg. wait – in person</div></div>

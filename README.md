@@ -14,7 +14,7 @@ Online booking · Video & audio consultations · Electronic medical records · R
 [![EJS](https://img.shields.io/badge/Views-EJS-B4CA65?logo=ejs&logoColor=black)](https://ejs.co)
 [![Jitsi Meet](https://img.shields.io/badge/Video-Jitsi%20Meet-1D76BA?logo=jitsi&logoColor=white)](https://jitsi.org/meet)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](#%EF%B8%8F-deploying-to-vercel)
-[![Tests](https://img.shields.io/badge/tests-18%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-20%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
 [![NDPA 2023](https://img.shields.io/badge/Privacy-NDPA%202023-0b5cad)](#-security-and-privacy)
 
 [**Quick start**](#-quick-start) · [**Deploy**](#%EF%B8%8F-deploying-to-vercel) · [**Demo accounts**](#-demo-accounts) · [**Screenshots**](#-screenshots) · [**Architecture**](#-system-design) · [**Security**](#-security-and-privacy)
@@ -126,8 +126,15 @@ Each requirement from the interview maps to something you can see in the applica
 
 <p align="center">
   <img src="docs/media/home.png" alt="Home page" width="49%">
-  <img src="docs/media/login.png" alt="Sign-in page" width="49%">
+  <img src="docs/media/login.png" alt="Patient sign-in page" width="49%">
 </p>
+
+### 🔐 Staff portal
+
+<p align="center">
+  <img src="docs/media/staff-login.png" alt="Staff portal sign-in page for doctors, nurses and administrators" width="49%">
+</p>
+<p align="center"><sub>Doctors, nurses and administrators sign in at <code>/staff/login</code>, separately from patients.</sub></p>
 
 ### 👩‍🎓 Patient
 
@@ -187,6 +194,7 @@ Each requirement from the interview maps to something you can see in the applica
 - View and cancel appointments; **Join consultation** appears 15 minutes before a remote appointment.
 - View the medical record: consultations, prescriptions (printable), vitals, history.
 - Secure messages with doctors they have seen; in-app and email notifications.
+- Forgot password: a one-time reset link by email, valid for 1 hour.
 - Update contact and emergency contact details.
 </details>
 
@@ -215,8 +223,8 @@ Each requirement from the interview maps to something you can see in the applica
 <summary><b>Administrator</b></summary>
 
 - Service dashboard (7/30/90 days).
-- Create staff accounts (doctor, nurse, admin) with temporary passwords; activate/deactivate accounts; reset passwords.
-- Audit log of sign-ins, record views and changes; email outbox.
+- Create staff accounts (doctor, nurse, admin) with temporary passwords; the new staff member is emailed the staff portal address. Activate/deactivate accounts; reset passwords.
+- Audit log of sign-ins, record views and changes; email outbox with a **Send me a test email** button.
 - Cannot see clinical records.
 </details>
 
@@ -296,12 +304,18 @@ Then open **<http://localhost:3000>** in a browser.
 
 After `npm run seed`:
 
-| Role | Email | Password |
-|---|---|---|
-| 🛡️ Administrator | `admin@uhs.ui.edu.ng` | `Admin@1234` |
-| 🩺 Doctor | `dr.adebayo@uhs.ui.edu.ng` (also `dr.okafor@…`, `dr.bello@…`) | `Doctor@1234` |
-| 🗂️ Nurse / Records | `nurse.ojo@uhs.ui.edu.ng` | `Nurse@1234` |
-| 👩‍🎓 Patient | `tolulope.adeyemi@stu.ui.edu.ng` (also `emeka.nwosu@stu.ui.edu.ng`) | `Patient@1234` |
+| Role | Sign in at | Email | Password |
+|---|---|---|---|
+| 🛡️ Administrator | `/staff/login` | `admin@uhs.ui.edu.ng` | `Admin@1234` |
+| 🩺 Doctor | `/staff/login` | `dr.adebayo@uhs.ui.edu.ng` (also `dr.okafor@…`, `dr.bello@…`) | `Doctor@1234` |
+| 🗂️ Nurse / Records | `/staff/login` | `nurse.ojo@uhs.ui.edu.ng` | `Nurse@1234` |
+| 👩‍🎓 Patient | `/login` | `tolulope.adeyemi@stu.ui.edu.ng` (also `emeka.nwosu@stu.ui.edu.ng`) | `Patient@1234` |
+
+> [!NOTE]
+> **Two separate entrances.** Patients use the public website and sign in at `/login` (and register themselves at
+> `/register`). Doctors, nurses and administrators use the **staff portal** at `/staff/login`, which has its own
+> dashboard layout. Staff accounts are created by an administrator in **Staff accounts**. Signing in on the wrong
+> page is refused, and every staff page lives under `/staff/...`.
 
 The seed creates 3 doctors, 1 nurse, 1 admin and 50 patients (some with paper files only and no online account).
 It also creates about 30 days of appointment history with a morning peak, today's queue, upcoming bookings and a
@@ -356,7 +370,7 @@ flowchart LR
    | `CRON_SECRET` | Another long random string. Vercel sends it when calling `/cron/reminders`. |
    | `SEED_DEMO` | `true` to load the demo accounts and data into the empty database on first start (for demonstrations). |
    | `APP_URL` | The deployment's address, e.g. `https://remote-healthcare.vercel.app` (used in email links). |
-   | `SMTP_*`, `MAIL_FROM` | Optional, for real email delivery. |
+   | `SMTP_*`, `MAIL_FROM` | For real email delivery, e.g. with Resend (see [Sending email with Resend](#-sending-email-with-resend)). |
 
 4. **Redeploy** so the new variables take effect.
 
@@ -393,7 +407,27 @@ All settings are environment variables, usually placed in a `.env` file (see [.e
 | `CLINIC_DAYS` | `1,2,3,4,5` | Days with consultations (0 = Sunday). |
 | `MAX_DAYS_AHEAD` | `30` | How far ahead patients can book. |
 | `JITSI_DOMAIN` | `meet.jit.si` | Video server. See [limitations](#-limitations-and-future-work). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | empty | Real email delivery. Leave `SMTP_HOST` empty to record emails in the outbox only. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | empty | Real email delivery (reminders, notifications, password resets). Leave `SMTP_HOST` empty to record emails in the outbox only. |
+
+### 📧 Sending email with Resend
+
+The app sends email over SMTP, so [Resend](https://resend.com) works without code changes:
+
+1. In Resend, add and verify your domain (**Domains → Add Domain**, then add the DNS records it shows at your domain registrar).
+2. Create an API key (**API Keys → Create API Key**, permission *Sending access*).
+3. Set these variables (in `.env` locally, and in Vercel → **Settings → Environment Variables**):
+
+   ```
+   SMTP_HOST=smtp.resend.com
+   SMTP_PORT=465
+   SMTP_USER=resend
+   SMTP_PASS=re_your_api_key
+   MAIL_FROM=UHS Telemedicine <no-reply@yourdomain.com>
+   APP_URL=https://your-site-address
+   ```
+
+   `MAIL_FROM` must use the domain you verified. `APP_URL` must be the real site address, because password-reset links use it.
+4. Restart (or redeploy), sign in as an administrator, open **Email outbox** and press **Send me a test email**.
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | see above | First admin, created on first start if none exists. |
 | `TRUST_PROXY` | unset | Set to `1` behind a reverse proxy that handles HTTPS (automatic on Vercel). |
 
@@ -513,6 +547,7 @@ erDiagram
 | `email_outbox` | Every email sent (or logged). |
 | `audit_log` | Who did what and when. |
 | `sessions` | Sign-in sessions. |
+| `password_resets` | One-time patient password-reset links (only a hash of each link is stored; they expire after 1 hour). |
 
 </details>
 
@@ -553,18 +588,20 @@ npm test
 ```
 
 ```
-ℹ tests 18
-ℹ pass 18
+ℹ tests 20
+ℹ pass 20
 ℹ fail 0
 ```
 
-18 automated tests run against a temporary database file that is deleted afterwards:
+20 automated tests run against a temporary database file that is deleted afterwards:
 
 - **Unit tests** ([tests/unit.test.js](tests/unit.test.js)): date handling, UHS number generation, duplicate detection (reordered names, phone formats, ID numbers), form validation, slot generation, least-busy doctor assignment, double-booking prevention (application and database level), reminders sent exactly once, safe redirects, password policy, doctor titles, transactions (rollback and nested calls).
 - **End-to-end HTTP tests** ([tests/http.test.js](tests/http.test.js)):
   - The full patient journey: register → duplicate registration blocked → book → doctor starts and completes the consultation with a prescription → patient sees the record, prescription, follow-up message and notification → patient replies → another patient cannot read the thread.
   - Records office: registration with duplicate warning/override, walk-in, vitals (out-of-range values refused), nurse cannot see clinical notes, enabling online access with forced password change.
-  - Admin: dashboard, user creation and deactivation, no access to clinical records.
+  - Admin: dashboard, user creation (welcome email without the password) and deactivation, test email, no access to clinical records.
+  - Separate entrances: staff are refused on the patient sign-in page and patients on the staff portal; old staff addresses redirect to `/staff`.
+  - Password reset: same answer for patients, staff and unknown emails; reset links hidden from the outbox; links work once, expire, and sign the account out elsewhere.
   - Security: CSRF rejection, failed-login auditing, access control redirects.
 
 ---
@@ -629,7 +666,7 @@ Remote-HealthCare/
 - **Integration with existing records.** The interview mentions "authorized integration with current records". No external UHS system was available, so paper files are digitised manually through the records office. A future version could import from an existing system once its format and authorisation are agreed.
 - **Single clinic, simple scheduling.** Doctors share one set of clinic hours; there is no per-doctor rota or leave. A rota table would be the next step.
 - **No pharmacy or laboratory modules.** Prescriptions are printable and shown to the patient, but there is no dispensing workflow or lab-request/result system yet.
-- **Password reset by email** is not included; resets are done by the administrator (temporary password).
+- **Staff password resets** are done by an administrator (temporary password), by design; only patients can reset by email.
 - **SQLite / Turso** suits a campus clinic. A very large deployment could move to PostgreSQL, since the SQL is mostly standard.
 - **Reminders on Vercel Hobby** run during site traffic plus one daily cron; a paid plan (or `npm start` on a normal server) gives minute-by-minute reminders.
 - **Two-factor authentication** for staff accounts would strengthen security.

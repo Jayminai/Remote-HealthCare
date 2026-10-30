@@ -1,0 +1,20 @@
+<%# Short FAQ list for the home page. Needs: faqs [[question, answer], ...] %>
+<% const half = Math.ceil(faqs.length / 2); %>
+<section class="section bg-white">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">FAQs</span>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+    </div>
+    <div class="faq-grid">
+      <% [faqs.slice(0, half), faqs.slice(half)].forEach((column) => { %>
+        <div>
+          <% column.forEach(([q, a]) => { %>
+            <details><summary><%= q %></summary><p><%= a %></p></details>
+          <% }) %>
+        </div>
+      <% }) %>
+    </div>
+    <div class="section-more"><a class="btn btn-lg" href="/faq">See all FAQs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+  </div>
+</section>

@@ -71,37 +71,39 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   assert.equal(booked.doctor_id, doctorId);
   assert.ok(booked.room_id);
 
-  // The patient cannot open clinical staff pages.
-  assert.equal((await patient.get('/patients/1')).status, 403);
-  assert.equal((await patient.get('/admin')).status, 403);
+  // The patient cannot open staff portal pages: they are sent back to their own dashboard.
+  r = await patient.get('/staff/patients/1');
+  assert.equal(r.status, 302);
+  assert.equal(r.location, '/patient');
+  assert.equal((await patient.get('/staff/admin')).location, '/patient');
 
   // 3. Move the appointment to today so the doctor can start it now.
   await db.update('appointments', booked.id, { scheduled_at: `${t.toDate()} 00:00` });
 
   // 4. Doctor starts and completes the consultation with a prescription.
   const doctor = new Client(base);
-  r = await doctor.login('doctor@test.ng');
-  assert.equal(r.location, '/doctor');
-  assert.match((await doctor.get('/doctor')).text, /Ada Lovelace Okoro/);
-  r = await doctor.post(`/doctor/appointments/${booked.id}/start`, {}, '/doctor');
-  assert.equal(r.location, `/doctor/appointments/${booked.id}/consult`);
+  r = await doctor.staffLogin('doctor@test.ng');
+  assert.equal(r.location, '/staff/doctor');
+  assert.match((await doctor.get('/staff/doctor')).text, /Ada Lovelace Okoro/);
+  r = await doctor.post(`/staff/doctor/appointments/${booked.id}/start`, {}, '/staff/doctor');
+  assert.equal(r.location, `/staff/doctor/appointments/${booked.id}/consult`);
   const consultPage = await doctor.get(r.location);
   assert.equal(consultPage.status, 200);
   assert.match(consultPage.text, /data-room="UHS-/);
 
   // Validation: an incomplete prescription line is refused.
-  r = await doctor.post(`/doctor/appointments/${booked.id}/complete`, {
+  r = await doctor.post(`/staff/doctor/appointments/${booked.id}/complete`, {
     presenting_complaint: 'Fever', diagnosis: 'Malaria', drug_name: 'Paracetamol', dosage: '', frequency: '', duration: '',
-  }, `/doctor/appointments/${booked.id}/consult`);
+  }, `/staff/doctor/appointments/${booked.id}/consult`);
   assert.equal(r.status, 400);
 
   const followUp = t.toDate(t.addDays(new Date(), 7));
-  r = await doctor.post(`/doctor/appointments/${booked.id}/complete`, {
+  r = await doctor.post(`/staff/doctor/appointments/${booked.id}/complete`, {
     presenting_complaint: 'Fever for two days', diagnosis: 'Uncomplicated malaria', plan: 'Rest and fluids',
     drug_name: ['Artemether-lumefantrine', 'Paracetamol'], dosage: ['1 tablet', '1 g'], frequency: ['12-hourly', '8-hourly'],
     duration: ['3 days', '3 days'], instructions: ['With food', ''],
     follow_up_date: followUp, follow_up_note: 'Message me if the fever continues.',
-  }, `/doctor/appointments/${booked.id}/consult`);
+  }, `/staff/doctor/appointments/${booked.id}/consult`);
   assert.equal(r.status, 302, r.text.slice(0, 800));
   assert.equal((await db.get('SELECT status FROM appointments WHERE id = ?', booked.id)).status, 'completed');
   const consult = await db.get('SELECT * FROM consultations WHERE appointment_id = ?', booked.id);
@@ -120,7 +122,9 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   // 6. Patient replies to the doctor.
   r = await patient.post(thread, { body: 'Thank you doctor' }, thread);
   assert.equal(r.status, 302);
-  assert.match((await doctor.get(thread)).text, /Thank you doctor/);
+  assert.match((await doctor.get(`/staff${thread}`)).text, /Thank you doctor/);
+  // A doctor following the patient-side link is sent to the staff portal.
+  assert.equal((await doctor.get(thread)).location, `/staff${thread}`);
 
   // Another patient cannot read this thread.
   const other = new Client(base);
@@ -130,41 +134,41 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
 
 test('records office registers a walk-in, flags duplicates and records vitals', async () => {
   const nurse = new Client(base);
-  await nurse.login('nurse@test.ng');
+  await nurse.staffLogin('nurse@test.ng');
   const form = { full_name: 'Musa Danjuma', category: 'student', id_number: '400100', date_of_birth: '2002-02-02', gender: 'male', phone: '08055555555' };
-  let r = await nurse.post('/records/patients/new', form, '/records/patients/new');
+  let r = await nurse.post('/staff/records/patients/new', form, '/staff/records/patients/new');
   assert.equal(r.status, 302, r.text.slice(0, 500));
   const pid = Number(r.location.split('/').pop());
 
   // Same name + DOB with a different ID number: warning first, allowed after confirmation.
-  r = await nurse.post('/records/patients/new', { ...form, id_number: '400101', phone: '' }, '/records/patients/new');
+  r = await nurse.post('/staff/records/patients/new', { ...form, id_number: '400101', phone: '' }, '/staff/records/patients/new');
   assert.equal(r.status, 400);
   assert.match(r.text, /Possible duplicate/);
-  r = await nurse.post('/records/patients/new', { ...form, id_number: '400101', phone: '', confirm_not_duplicate: '1' }, '/records/patients/new');
+  r = await nurse.post('/staff/records/patients/new', { ...form, id_number: '400101', phone: '', confirm_not_duplicate: '1' }, '/staff/records/patients/new');
   assert.equal(r.status, 302);
 
   // Same ID number is always blocked.
-  r = await nurse.post('/records/patients/new', { ...form, full_name: 'Someone Different', confirm_not_duplicate: '1' }, '/records/patients/new');
+  r = await nurse.post('/staff/records/patients/new', { ...form, full_name: 'Someone Different', confirm_not_duplicate: '1' }, '/staff/records/patients/new');
   assert.equal(r.status, 400);
 
-  r = await nurse.post(`/records/patients/${pid}/walk-in`, { reason: 'Headache', doctor_id: '' }, `/patients/${pid}`);
-  assert.equal(r.location, '/records');
+  r = await nurse.post(`/staff/records/patients/${pid}/walk-in`, { reason: 'Headache', doctor_id: '' }, `/staff/patients/${pid}`);
+  assert.equal(r.location, '/staff/records');
   assert.equal((await db.get("SELECT status FROM appointments WHERE patient_id = ? AND booked_via = 'walk_in'", pid)).status, 'checked_in');
 
-  r = await nurse.post(`/records/patients/${pid}/vitals`, { systolic: '120', diastolic: '80', temperature: '37.2' }, `/patients/${pid}`);
+  r = await nurse.post(`/staff/records/patients/${pid}/vitals`, { systolic: '120', diastolic: '80', temperature: '37.2' }, `/staff/patients/${pid}`);
   assert.equal(r.status, 302);
   assert.ok(await db.get('SELECT id FROM vitals WHERE patient_id = ?', pid));
 
   // Out-of-range vitals are refused.
-  await nurse.post(`/records/patients/${pid}/vitals`, { temperature: '98.6' }, `/patients/${pid}`);
+  await nurse.post(`/staff/records/patients/${pid}/vitals`, { temperature: '98.6' }, `/staff/patients/${pid}`);
   assert.equal((await db.get('SELECT COUNT(*) AS n FROM vitals WHERE patient_id = ?', pid)).n, 1);
 
   // Nurses do not see consultation notes.
-  const page = await nurse.get(`/patients/${pid}`);
+  const page = await nurse.get(`/staff/patients/${pid}`);
   assert.match(page.text, /visible to doctors only/);
 
   // Enabling online access issues a temporary password that must be changed.
-  r = await nurse.post(`/records/patients/${pid}/online-access`, { email: 'musa@stu.ui.edu.ng' }, `/patients/${pid}`);
+  r = await nurse.post(`/staff/records/patients/${pid}/online-access`, { email: 'musa@stu.ui.edu.ng' }, `/staff/patients/${pid}`);
   const temp = r.text.match(/class="secret">([^<]+)</)[1];
   const musa = new Client(base);
   await musa.login('musa@stu.ui.edu.ng', temp);
@@ -176,22 +180,106 @@ test('records office registers a walk-in, flags duplicates and records vitals', 
 
 test('admin dashboard, user management and audit log', async () => {
   const admin = new Client(base);
-  await admin.login('admin@test.ng');
-  const dash = await admin.get('/admin');
+  await admin.staffLogin('admin@test.ng');
+  const dash = await admin.get('/staff/admin');
   assert.equal(dash.status, 200);
   assert.match(dash.text, /Peak hours/);
-  assert.equal((await admin.get('/admin/audit')).status, 200);
-  assert.equal((await admin.get('/admin/outbox')).status, 200);
+  assert.equal((await admin.get('/staff/admin/audit')).status, 200);
+  assert.equal((await admin.get('/staff/admin/outbox')).status, 200);
 
-  let r = await admin.post('/admin/users/new', { role: 'doctor', full_name: 'Dr New Person', email: 'new.doc@test.ng', specialty: 'GP' }, '/admin/users/new');
+  let r = await admin.post('/staff/admin/users/new', { role: 'doctor', full_name: 'Dr New Person', email: 'new.doc@test.ng', specialty: 'GP' }, '/staff/admin/users/new');
   assert.equal(r.status, 200);
   assert.match(r.text, /Temporary password/);
+  assert.match(r.text, /\/staff\/login/);
+  // The new staff member is emailed the sign-in address, never the password.
+  const welcome = await db.get("SELECT body FROM email_outbox WHERE to_email = 'new.doc@test.ng'");
+  assert.match(welcome.body, /\/staff\/login/);
+  assert.doesNotMatch(welcome.body, new RegExp(r.text.match(/class="secret">([^<]+)</)[1]));
+
+  // The test-email button records an email to the administrator.
+  r = await admin.post('/staff/admin/outbox/test', {}, '/staff/admin/outbox');
+  assert.equal(r.location, '/staff/admin/outbox');
+  assert.ok(await db.get("SELECT id FROM email_outbox WHERE to_email = 'admin@test.ng' AND subject = 'UHS Telemedicine test email'"));
 
   // Deactivated accounts cannot sign in.
   const id = (await db.get("SELECT id FROM users WHERE email = 'new.doc@test.ng'")).id;
-  r = await admin.post(`/admin/users/${id}/toggle`, {}, '/admin/users');
+  r = await admin.post(`/staff/admin/users/${id}/toggle`, {}, '/staff/admin/users');
   assert.equal((await db.get('SELECT is_active FROM users WHERE id = ?', id)).is_active, 0);
 
   // Admins never see clinical records.
-  assert.equal((await admin.get('/patients/1')).status, 403);
+  assert.equal((await admin.get('/staff/patients/1')).status, 403);
+});
+
+test('patients and staff sign in on separate pages', async () => {
+  const c = new Client(base);
+  assert.match((await c.get('/staff/login')).text, /Staff sign in/);
+  // Signed-out visitors to the staff portal go to the staff sign-in page.
+  assert.equal((await c.get('/staff/admin')).location, '/staff/login');
+  // Old staff addresses still work.
+  assert.equal((await c.get('/doctor?date=2026-01-05')).location, '/staff/doctor?date=2026-01-05');
+
+  // Staff cannot sign in on the patient website...
+  let r = await c.login('doctor@test.ng');
+  assert.equal(r.status, 403);
+  assert.match(r.text, /staff portal/);
+  assert.equal((await c.get('/staff/doctor')).location, '/staff/login');
+  // ...and patients cannot sign in to the staff portal.
+  await makeUser('patient', 'portal.patient@test.ng');
+  r = await c.staffLogin('portal.patient@test.ng');
+  assert.equal(r.status, 403);
+  assert.ok(await db.get("SELECT id FROM audit_log WHERE action = 'login_wrong_portal'"));
+
+  // Signing out from the staff portal returns to the staff sign-in page.
+  const doctor = new Client(base);
+  await doctor.staffLogin('doctor@test.ng');
+  assert.equal((await doctor.get('/messages')).location, '/staff/messages');
+  r = await doctor.post('/logout', {}, '/staff/doctor');
+  assert.equal(r.location, '/staff/login');
+});
+
+test('patient resets a forgotten password by email', async () => {
+  const crypto = require('node:crypto');
+  const userId = await makeUser('patient', 'reset.me@test.ng', { full_name: 'Reset Me' });
+  const signedIn = new Client(base);
+  assert.equal((await signedIn.login('reset.me@test.ng')).status, 302);
+
+  // Requesting a link: same answer for patients, staff and unknown addresses.
+  const c = new Client(base);
+  for (const email of ['reset.me@test.ng', 'doctor@test.ng', 'nobody@test.ng']) {
+    const r = await c.post('/forgot-password', { email }, '/forgot-password');
+    assert.equal(r.status, 200);
+    assert.match(r.text, /we have sent it a link/);
+  }
+  assert.ok(await db.get('SELECT id FROM password_resets WHERE user_id = ?', userId));
+  assert.equal(await db.get('SELECT id FROM password_resets WHERE user_id = ?', doctorId), undefined);
+  // The outbox never shows the secret link.
+  const mail = await db.get("SELECT body FROM email_outbox WHERE to_email = 'reset.me@test.ng' AND subject = 'Reset your UHS Telemedicine password'");
+  assert.match(mail.body, /\[reset link hidden\]/);
+  assert.doesNotMatch(mail.body, /reset-password\//);
+  assert.match((await db.get("SELECT body FROM email_outbox WHERE to_email = 'doctor@test.ng' ORDER BY id DESC")).body, /reset by the UHS administrator/);
+
+  // Use a link with a known token (the real one only exists in the email).
+  const token = crypto.randomBytes(32).toString('base64url');
+  const hash = crypto.createHash('sha256').update(token).digest('hex');
+  await db.run('DELETE FROM password_resets WHERE user_id = ?', userId);
+  await db.insert('password_resets', { user_id: userId, token_hash: hash, expires_at: t.toDateTime(t.addMinutes(new Date(), 30), true) });
+  assert.equal((await c.get(`/reset-password/${token}`)).status, 200);
+  let r = await c.post(`/reset-password/${token}`, { password: 'NewSecret9', confirm_password: 'Different9' }, `/reset-password/${token}`);
+  assert.equal(r.status, 400);
+  r = await c.post(`/reset-password/${token}`, { password: 'NewSecret9', confirm_password: 'NewSecret9' }, `/reset-password/${token}`);
+  assert.equal(r.location, '/login');
+
+  // The link works once, other sessions are signed out, and the new password works.
+  assert.equal((await c.get(`/reset-password/${token}`)).status, 410);
+  assert.equal((await signedIn.get('/notifications')).location, '/login');
+  assert.equal((await new Client(base).login('reset.me@test.ng', 'NewSecret9')).location, '/patient');
+
+  // Expired links are refused.
+  const old = crypto.randomBytes(32).toString('base64url');
+  await db.insert('password_resets', {
+    user_id: userId,
+    token_hash: crypto.createHash('sha256').update(old).digest('hex'),
+    expires_at: t.toDateTime(t.addMinutes(new Date(), -1), true),
+  });
+  assert.equal((await c.get(`/reset-password/${old}`)).status, 410);
 });

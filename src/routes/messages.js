@@ -81,7 +81,8 @@ router.post('/:patientId/:doctorId', async (req, res) => {
   if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
   const { patient, doctor } = access;
   const body = v.str(req.body.body, 2000);
-  const url = `/messages/${patient.id}/${doctor.id}`;
+  const path = `/messages/${patient.id}/${doctor.id}`;
+  const url = `${res.locals.base}${path}`;
   if (!body) {
     req.flash('error', 'Type a message first.');
     return res.redirect(url);
@@ -96,9 +97,10 @@ router.post('/:patientId/:doctorId', async (req, res) => {
   }
   const id = await db.insert('messages', { patient_id: patient.id, doctor_id: doctor.id, sender_id: req.user.id, body });
   await audit(req, 'message_sent', 'message', id);
-  const recipient = req.user.role === 'doctor' ? patient.user_id : doctor.id;
+  // The doctor reads messages in the staff portal, the patient on the public site.
+  const [recipient, link] = req.user.role === 'doctor' ? [patient.user_id, path] : [doctor.id, `/staff${path}`];
   // Email says only that a message exists; the content stays inside the secure system.
-  await notifyUser(recipient, 'New secure message', `You have a new message from ${req.user.full_name}. Sign in to read it.`, url);
+  await notifyUser(recipient, 'New secure message', `You have a new message from ${req.user.full_name}. Sign in to read it.`, link);
   res.redirect(`${url}#latest`);
 });
 

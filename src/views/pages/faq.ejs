@@ -1,0 +1,33 @@
+<%- include('../partials/head', { fullWidth: true }) %>
+<%- include('../partials/page_banner', { intro: 'Answers to common questions about booking, consultations and your record.' }) %>
+<% const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); %>
+<section class="section bg-white">
+  <div class="wrap faq-layout">
+    <aside class="faq-topics">
+      <h2>Topics</h2>
+      <ul>
+        <% faqGroups.forEach((g) => { %>
+          <li><a href="#<%= slug(g.title) %>"><i class="<%= g.icon %>" aria-hidden="true"></i><%= g.title %></a></li>
+        <% }) %>
+      </ul>
+      <div class="faq-help">
+        <h3>Still need help?</h3>
+        <p>Visit the UHS records office during clinic hours (<%= clinicHours %>).</p>
+        <% if (!currentUser) { %><a class="btn btn-accent btn-block" href="/register">Create an account</a><% } %>
+      </div>
+    </aside>
+    <div>
+      <% faqGroups.forEach((g) => { %>
+        <div class="faq-group" id="<%= slug(g.title) %>">
+          <h2><span><i class="<%= g.icon %>" aria-hidden="true"></i></span><%= g.title %></h2>
+          <div class="faq-list">
+            <% g.items.forEach(([q, a]) => { %>
+              <details><summary><%= q %></summary><p><%= a %></p></details>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<%- include('../partials/foot') %>

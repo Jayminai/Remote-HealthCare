@@ -16,14 +16,22 @@ if (config.smtp.host) {
   });
 }
 
-async function sendEmail(to, subject, body) {
-  if (!to) return;
-  const id = await db.insert('email_outbox', { to_email: to, subject, body, status: 'logged' });
+/**
+ * Send an email (or only record it when SMTP is not configured). Returns the outbox row.
+ * outboxBody: what to store in the outbox instead of the real body, for emails that contain
+ * a secret link (password reset), so administrators reading the outbox cannot use it.
+ */
+async function sendEmail(to, subject, body, { outboxBody } = {}) {
+  if (!to) return null;
+  const id = await db.insert('email_outbox', { to_email: to, subject, body: outboxBody ?? body, status: 'logged' });
   if (!transporter) {
     if (!config.isProduction && process.env.NODE_TEST_CONTEXT == null) {
-      console.log(`[email logged] to=${to} subject="${subject}"`);
+      // Development without SMTP: print the email so links can still be followed.
+      console.log(`[email logged] to=${to} subject="${subject}"
+${body}
+`);
     }
-    return;
+    return db.get('SELECT * FROM email_outbox WHERE id = ?', id);
   }
   try {
     await transporter.sendMail({ from: config.smtp.from, to, subject, text: body });
@@ -31,6 +39,7 @@ async function sendEmail(to, subject, body) {
   } catch (err) {
     await db.update('email_outbox', id, { status: 'failed', error: String(err.message).slice(0, 500) });
   }
+  return db.get('SELECT * FROM email_outbox WHERE id = ?', id);
 }
 
 /** Notify a user in-app, and optionally by email. */

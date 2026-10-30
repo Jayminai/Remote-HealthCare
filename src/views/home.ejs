@@ -1,49 +1,27 @@
-<%- include('partials/head') %>
-<section class="hero">
-  <div class="hero-text">
-  <h1>See a UHS doctor without the queue</h1>
-  <p>
-    The University Health Service telemedicine platform lets students, staff and their dependants book
-    appointments online, consult a doctor by video or audio call, and keep their medical records safe and
-    easy to find.
-  </p>
-  <div class="row">
-    <a class="btn btn-light" href="/register">Create a patient account</a>
-    <a class="btn btn-accent" href="/login">Sign in</a>
+<%- include('partials/head', { fullWidth: true }) %>
+<section class="hero2">
+  <div class="wrap">
+    <span class="tagline">Welcome to UHS Telemedicine</span>
+    <h1>See a UHS Doctor Without the Queue</h1>
+    <p>Students, staff and their dependants can book appointments online, consult a doctor by video or audio call,
+      and keep their medical records safe and easy to find.</p>
+    <div class="row">
+      <a class="btn btn-accent btn-lg" href="/register">Create a patient account <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <a class="btn btn-light btn-lg" href="/login">Sign in</a>
+    </div>
+    <div class="hero-badges">
+      <span><i class="fa-solid fa-video" aria-hidden="true"></i> Video &amp; audio consultations</span>
+      <span><i class="fa-solid fa-shield-heart" aria-hidden="true"></i> Secure electronic records</span>
+      <span><i class="fa-regular fa-bell" aria-hidden="true"></i> Appointment reminders</span>
+    </div>
   </div>
-  </div>
-  <img class="hero-logo" src="/static/img/ui-logo.png" alt="University of Ibadan" width="600" height="200">
+  <svg class="hero-wave" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0,60 C240,100 480,20 720,40 C960,60 1200,95 1440,50 L1440,90 L0,90 Z"/></svg>
 </section>
-
-<div class="grid grid-3">
-  <div class="card feature">
-    <h3>Book online</h3>
-    <p>Pick a date and a free time slot that suits you. No phone calls, no waiting to be attended to just to book.</p>
-  </div>
-  <div class="card feature">
-    <h3>Consult remotely</h3>
-    <p>Suitable cases can be handled by secure video or audio call, saving you an unnecessary trip to the clinic.</p>
-  </div>
-  <div class="card feature">
-    <h3>Electronic records</h3>
-    <p>Your consultations, prescriptions and history are kept in one secure electronic file — no more missing folders.</p>
-  </div>
-  <div class="card feature">
-    <h3>Reminders</h3>
-    <p>Get reminders before your appointment and on your follow-up date, in the app and by email.</p>
-  </div>
-  <div class="card feature">
-    <h3>Message your doctor</h3>
-    <p>Follow-up questions? Send a secure message to the doctor who saw you.</p>
-  </div>
-  <div class="card feature">
-    <h3>Already have a UHS folder?</h3>
-    <p>Visit the records office with your ID card and they will link your existing record to an online account.</p>
-  </div>
-</div>
-
-<div class="alert alert-warn">
-  <strong>Emergencies:</strong> telemedicine is not for emergencies. If you have severe chest pain, difficulty breathing,
-  heavy bleeding, loss of consciousness or another emergency, go to the UHS emergency unit immediately.
-</div>
+<%- include('partials/sections/about') %>
+<%- include('partials/sections/services', { showAll: true }) %>
+<%- include('partials/sections/how', { showGuide: true }) %>
+<%- include('partials/sections/team') %>
+<%- include('partials/sections/numbers') %>
+<%- include('partials/sections/audience') %>
+<%- include('partials/sections/faq') %>
 <%- include('partials/foot') %>

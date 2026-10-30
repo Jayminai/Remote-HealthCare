@@ -1,10 +1,10 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <h1>User accounts</h1>
-  <a class="btn" href="/admin/users/new">Add staff account</a>
+  <a class="btn" href="/staff/admin/users/new">Add staff account</a>
 </div>
 <div class="card">
-  <form method="get" action="/admin/users" class="row" style="margin-bottom:.8rem">
+  <form method="get" action="/staff/admin/users" class="row" style="margin-bottom:.8rem">
     <label for="role" style="margin:0">Show</label>
     <select id="role" name="role" style="width:auto">
       <option value="">All users</option>
@@ -27,11 +27,11 @@
         <td>
           <% if (u.id !== currentUser.id) { %>
           <div class="row">
-            <form method="post" action="/admin/users/<%= u.id %>/toggle" data-confirm="<%= u.is_active ? 'Deactivate' : 'Activate' %> <%= u.full_name %>?">
+            <form method="post" action="/staff/admin/users/<%= u.id %>/toggle" data-confirm="<%= u.is_active ? 'Deactivate' : 'Activate' %> <%= u.full_name %>?">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="btn btn-sm <%= u.is_active ? 'btn-danger' : 'btn-light' %>" type="submit"><%= u.is_active ? 'Deactivate' : 'Activate' %></button>
             </form>
-            <form method="post" action="/admin/users/<%= u.id %>/reset-password" data-confirm="Reset the password for <%= u.full_name %>? A temporary password will be shown.">
+            <form method="post" action="/staff/admin/users/<%= u.id %>/reset-password" data-confirm="Reset the password for <%= u.full_name %>? A temporary password will be shown.">
               <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <button class="btn btn-light btn-sm" type="submit">Reset password</button>
             </form>

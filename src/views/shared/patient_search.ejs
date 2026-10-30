@@ -1,7 +1,7 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <h1>Find a patient</h1>
-  <% if (currentUser.role === 'nurse') { %><a class="btn" href="/records/patients/new">Register new patient</a><% } %>
+  <% if (currentUser.role === 'nurse') { %><a class="btn" href="/staff/records/patients/new">Register new patient</a><% } %>
 </div>
 <div class="card">
   <form method="get" action="<%= currentPath %>" class="row">
@@ -12,14 +12,14 @@
 <% if (q) { %>
 <div class="card">
   <% if (!results.length) { %>
-    <p class="empty">No patients match "<%= q %>".<% if (currentUser.role === 'nurse') { %> <a href="/records/patients/new">Register a new patient</a>.<% } %></p>
+    <p class="empty">No patients match "<%= q %>".<% if (currentUser.role === 'nurse') { %> <a href="/staff/records/patients/new">Register a new patient</a>.<% } %></p>
   <% } else { %>
   <div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>UHS no.</th><th>Matric / staff no.</th><th>Date of birth</th><th>Phone</th><th>Old file no.</th></tr></thead>
     <tbody>
     <% results.forEach((p) => { %>
       <tr>
-        <td><a href="/patients/<%= p.id %>"><%= p.full_name %></a></td>
+        <td><a href="/staff/patients/<%= p.id %>"><%= p.full_name %></a></td>
         <td><%= p.uhs_number %></td>
         <td><%= p.id_number || '—' %></td>
         <td><%= t.fmtDate(p.date_of_birth) %></td>

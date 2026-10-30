@@ -1,0 +1,56 @@
+<%- include('../partials/head', { fullWidth: true }) %>
+<%- include('../partials/page_banner', { intro: 'Telemedicine for the University Health Service, University of Ibadan.' }) %>
+<%- include('../partials/sections/about', { link: ['/how-it-works', 'How it works'] }) %>
+
+<section class="section bg-gradient">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Why We Built It</span>
+      <h2 class="section-title">From What UHS Staff Told Us to What the Platform Does</h2>
+      <p>The platform was designed from interviews with UHS staff about how the clinic works today.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-solid fa-people-line" aria-hidden="true"></i></span>
+        <h3>Busy mornings</h3>
+        <p class="problem">Most patients arrive in the morning, so queues and waiting times grow.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Remote consultations take suitable cases out of the waiting room, and "first available doctor" picks the least busy doctor.</p>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span>
+        <h3>Paper folders</h3>
+        <p class="problem">Records are mostly on paper and files can be misplaced or duplicated.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> One electronic record per patient, with duplicate checks and tools for the records office to digitise old files.</p>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-solid fa-phone" aria-hidden="true"></i></span>
+        <h3>Booking by phone or in person</h3>
+        <p class="problem">Appointments are arranged at the clinic or by telephone, alongside walk-ins.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Online booking of free slots, while the records office still books phone calls and walk-ins in the same system.</p>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-regular fa-comments" aria-hidden="true"></i></span>
+        <h3>Follow-up between visits</h3>
+        <p class="problem">Follow-up questions mean another phone call or another visit.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Follow-up reminders and secure messages between the patient and their doctor.</p>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-solid fa-chart-line" aria-hidden="true"></i></span>
+        <h3>Planning the service</h3>
+        <p class="problem">There was little data on peak hours, waiting times or doctor workload.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> An administrator dashboard with peak hours, waiting times, remote share, no-shows and workload.</p>
+      </div>
+      <div class="problem-card">
+        <span class="problem-icon"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
+        <h3>Keeping information safe</h3>
+        <p class="problem">Patient information must be secure and easy to find for the right people.</p>
+        <p class="solution"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Access by role, an audit log of every record view and change, and automatic sign-out, in line with the NDPA 2023.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/sections/numbers') %>
+<%- include('../partials/sections/team') %>
+<%- include('../partials/sections/audience') %>
+<%- include('../partials/foot') %>

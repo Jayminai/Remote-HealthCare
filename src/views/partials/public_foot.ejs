@@ -1,0 +1,67 @@
+<%
+  const footRole = currentUser ? currentUser.role : null;
+  const footLinks = footRole === 'patient'
+    ? [['/patient', 'My dashboard'], ['/patient/book', 'Book a consultation'], ['/patient/records', 'My medical record'], ['/messages', 'Messages'], ['/account/profile', 'My profile'], ['/how-it-works', 'How it works'], ['/faq', 'Help & FAQs']]
+    : [['/', 'Home'], ['/about', 'About us'], ['/services', 'Our services'], ['/how-it-works', 'How it works'], ['/faq', 'FAQs'], ['/register', 'Create an account'], ['/staff/login', 'Staff portal']];
+%>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-cta">
+      <div class="cta-text">
+        <span class="cta-icon"><i class="fa-solid fa-truck-medical" aria-hidden="true"></i></span>
+        <div>
+          <h3>Is it an emergency?</h3>
+          <p>Telemedicine is not for emergencies. For severe chest pain, difficulty breathing, heavy bleeding or loss of
+            consciousness, go to the UHS emergency unit immediately or call the clinic.</p>
+        </div>
+      </div>
+      <% if (!currentUser) { %>
+        <a class="btn btn-white btn-lg" href="/register">Book a consultation <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } else if (footRole === 'patient') { %>
+        <a class="btn btn-white btn-lg" href="/messages">Message your doctor <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+      <% } %>
+    </div>
+    <div class="footer-grid">
+      <div>
+        <img class="footer-logo" src="/static/img/ui-logo.png" alt="University of Ibadan" width="600" height="200">
+        <p>The UHS telemedicine platform lets students, staff and their dependants book appointments, consult a doctor
+          by video or audio call, and keep a secure electronic medical record.</p>
+        <div class="footer-badges" aria-hidden="true">
+          <span title="Video consultations"><i class="fa-solid fa-video"></i></span>
+          <span title="Audio consultations"><i class="fa-solid fa-phone"></i></span>
+          <span title="Secure records"><i class="fa-solid fa-shield-heart"></i></span>
+        </div>
+      </div>
+      <div>
+        <h4>Useful Links</h4>
+        <ul class="footer-links">
+          <% footLinks.forEach(([href, label]) => { %>
+            <li><a href="<%= href %>"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i><%= label %></a></li>
+          <% }) %>
+        </ul>
+      </div>
+      <div>
+        <h4>Working Hours</h4>
+        <ul class="footer-hours">
+          <li>Clinic &amp; remote consultations <span><%= clinicHours %></span></li>
+          <li>Online booking <span>Any time, for open slots</span></li>
+          <li>Emergency unit <span>Walk in — do not book online</span></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contact Us</h4>
+        <ul class="footer-contact">
+          <li><i class="fa-solid fa-location-dot" aria-hidden="true"></i><span><%= clinicName %>, Ibadan, Oyo State</span></li>
+          <li><i class="fa-solid fa-folder-open" aria-hidden="true"></i><span>Records office — linking paper files and password resets</span></li>
+          <li><i class="fa-solid fa-user-shield" aria-hidden="true"></i><span>Your data is handled in line with the Nigeria Data Protection Act 2023</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="copyright">
+    <div class="wrap">&copy; <%= new Date().getFullYear() %> <%= clinicName %> · Telemedicine Platform</div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<%- include('../partials/head') %>
+<div class="staff-login">
+  <div class="staff-login-panel">
+    <a class="staff-brand" href="/staff/login">
+      <img src="/static/img/ui-crest.png" alt="" width="52" height="52">
+      <span><strong>UHS Staff Portal</strong><small>University Health Service, University of Ibadan</small></span>
+    </a>
+    <div>
+      <h2>For doctors, nurses, records officers and administrators</h2>
+      <ul class="checks">
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Accounts are created by the UHS administrator</li>
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Every view of a patient record is logged</li>
+        <li><i class="fa-solid fa-check" aria-hidden="true"></i> You are signed out after a period of inactivity</li>
+      </ul>
+    </div>
+    <p class="staff-login-note"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Authorised UHS staff only.</p>
+  </div>
+  <div class="staff-login-form">
+    <span class="eyebrow">Staff sign in</span>
+    <h1>Welcome back</h1>
+    <p class="muted">Sign in with the email address your administrator registered.</p>
+    <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+    <form method="post" action="/staff/login" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <div class="field">
+        <label for="email">Work email</label>
+        <input id="email" type="email" name="email" value="<%= email %>" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button class="btn btn-block" type="submit">Sign in to staff portal</button>
+    </form>
+    <hr>
+    <p class="muted">Forgot your password? Ask the UHS administrator to issue a temporary one.</p>
+    <p class="muted">Patient? <a href="/login">Sign in on the patient website</a>.</p>
+  </div>
+</div>
+<%- include('../partials/foot') %>

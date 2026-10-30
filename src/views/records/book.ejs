@@ -1,12 +1,12 @@
 <%- include('../partials/head', { scripts: ['/static/js/booking.js'] }) %>
 <div class="page-head">
   <div><h1>Book for <%= patient.full_name %></h1><span class="muted"><%= patient.uhs_number %> · <%= patient.phone || 'no phone on file' %></span></div>
-  <a class="btn btn-light" href="/patients/<%= patient.id %>">Back to record</a>
+  <a class="btn btn-light" href="/staff/patients/<%= patient.id %>">Back to record</a>
 </div>
 <div class="split">
   <div class="card">
     <%- include('../partials/errors') %>
-    <%- include('../partials/booking_form', { action: `/records/patients/${patient.id}/book` }) %>
+    <%- include('../partials/booking_form', { action: `/staff/records/patients/${patient.id}/book` }) %>
   </div>
   <div class="card">
     <h2>Phone bookings</h2>

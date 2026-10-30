@@ -1,0 +1,88 @@
+<%
+  // Staff portal layout: sidebar menu for doctors, nurses / records officers and administrators.
+  const role = currentUser ? currentUser.role : null;
+  const menus = {
+    doctor: [
+      ['Workspace', [['/staff/doctor', 'My queue', 'fa-solid fa-list-check'], ['/staff/doctor/patients', 'Patients', 'fa-solid fa-users'], ['/staff/messages', 'Messages', 'fa-regular fa-comments', unreadMessages]]],
+    ],
+    nurse: [
+      ['Records office', [['/staff/records', "Today's queue", 'fa-solid fa-list-check'], ['/staff/records/patients', 'Find a patient', 'fa-solid fa-magnifying-glass'], ['/staff/records/patients/new', 'Register patient', 'fa-solid fa-user-plus']]],
+    ],
+    admin: [
+      ['Administration', [['/staff/admin', 'Service dashboard', 'fa-solid fa-chart-column'], ['/staff/admin/users', 'Staff accounts', 'fa-solid fa-users-gear'], ['/staff/admin/audit', 'Audit log', 'fa-solid fa-clipboard-list'], ['/staff/admin/outbox', 'Email outbox', 'fa-regular fa-envelope']]],
+    ],
+  }[role] || [];
+  if (role) {
+    menus.push(['Account', [
+      ['/staff/notifications', 'Notifications', 'fa-regular fa-bell', unreadNotifications],
+      ['/staff/account/password', 'Change password', 'fa-solid fa-key'],
+    ]]);
+  }
+  // The active link is the longest one that matches the current path.
+  const allHrefs = menus.flatMap(([, items]) => items.map(([h]) => h));
+  const activeHref = allHrefs.filter((h) => currentPath === h || currentPath.startsWith(h + '/')).sort((a, b) => b.length - a.length)[0];
+  const roleNames = { doctor: 'Doctor', nurse: 'Nurse / Records', admin: 'Administrator' };
+  const initials = currentUser ? currentUser.full_name.replace(/^(Dr|Mrs|Mr|Ms|Prof)\.?\s+/i, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() : '';
+%><!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title><%= title %> · UHS Staff Portal</title>
+  <link rel="icon" type="image/png" href="/static/img/ui-crest.png">
+  <link rel="stylesheet" href="<%= asset('vendor/fontawesome/css/all.min.css') %>">
+  <link rel="stylesheet" href="<%= asset('css/style.css') %>">
+  <script src="<%= asset('js/app.js') %>" defer></script>
+  <% (typeof scripts !== 'undefined' ? scripts : []).forEach((src) => { %>
+  <script src="<%= src.startsWith('/static/') ? asset(src.slice(8)) : src %>" defer></script>
+  <% }) %>
+</head>
+<body class="staff-body">
+<% if (!currentUser) { %>
+<main class="staff-auth">
+<% } else { %>
+<div class="staff-shell" data-staff-shell>
+  <aside class="staff-sidebar" id="staff-sidebar" aria-label="Staff menu">
+    <a class="staff-brand" href="/staff">
+      <img src="/static/img/ui-crest.png" alt="" width="42" height="42">
+      <span><strong>UHS Staff Portal</strong><small>Telemedicine</small></span>
+    </a>
+    <nav class="staff-nav">
+      <% menus.forEach(([heading, items]) => { %>
+        <p class="staff-nav-heading"><%= heading %></p>
+        <% items.forEach(([href, label, icon, badge]) => { %>
+          <a href="<%= href %>" class="<%= href === activeHref ? 'active' : '' %>" <%- href === activeHref ? 'aria-current="page"' : '' %>>
+            <i class="<%= icon %>" aria-hidden="true"></i><span><%= label %></span><% if (badge) { %><span class="pill"><%= badge %></span><% } %>
+          </a>
+        <% }) %>
+      <% }) %>
+    </nav>
+    <div class="staff-sidebar-foot">
+      <a href="/" class="staff-site-link"><i class="fa-solid fa-globe" aria-hidden="true"></i> Patient website</a>
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button type="submit" class="staff-signout"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sign out</button>
+      </form>
+    </div>
+  </aside>
+  <div class="staff-backdrop" data-staff-close hidden></div>
+  <div class="staff-main">
+    <header class="staff-topbar">
+      <button class="staff-menu-btn" type="button" aria-label="Open menu" aria-controls="staff-sidebar" aria-expanded="false" data-staff-toggle><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+      <div class="staff-topbar-title"><%= roleNames[role] %> workspace</div>
+      <div class="staff-topbar-actions">
+        <a href="/staff/notifications" class="icon-link <%= currentPath === '/staff/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
+          <i class="fa-regular fa-bell" aria-hidden="true"></i><% if (unreadNotifications) { %><span class="pill"><%= unreadNotifications %></span><% } %>
+        </a>
+        <a class="staff-user" href="/staff/account/password" title="Account">
+          <span class="avatar" aria-hidden="true"><%= initials %></span>
+          <span class="user-meta"><strong><%= currentUser.full_name %></strong><small><%= roleNames[role] %></small></span>
+        </a>
+      </div>
+    </header>
+    <main class="staff-content">
+<% } %>
+<% if (flash) { %>
+  <div class="alert alert-<%= flash.type %>" role="status"><%= flash.message %></div>
+<% } %>

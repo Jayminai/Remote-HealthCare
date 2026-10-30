@@ -74,10 +74,15 @@ class Client {
     return this.request('POST', path, { _csrf: m ? m[1] : '', ...form });
   }
 
-  async login(email, password = 'Passw0rd1') {
-    const page = await this.get('/login');
+  /** Sign in on the patient website (loginPath '/login') or the staff portal ('/staff/login'). */
+  async login(email, password = 'Passw0rd1', loginPath = '/login') {
+    const page = await this.get(loginPath);
     const token = page.text.match(/name="_csrf" value="([a-f0-9]+)"/)[1];
-    return this.request('POST', '/login', { _csrf: token, email, password });
+    return this.request('POST', loginPath, { _csrf: token, email, password });
+  }
+
+  staffLogin(email, password = 'Passw0rd1') {
+    return this.login(email, password, '/staff/login');
   }
 }
 

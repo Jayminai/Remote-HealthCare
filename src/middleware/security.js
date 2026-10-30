@@ -48,7 +48,11 @@ function csrf(req, res, next) {
 }
 
 /** Very small in-memory rate limiter for sign-in attempts. */
-function loginLimiter({ max = 5, windowMs = 15 * 60 * 1000 } = {}) {
+/**
+ * Counts failed attempts per IP address and email. onLimit renders the page shown once the
+ * limit is reached (by default the patient sign-in page).
+ */
+function loginLimiter({ max = 5, windowMs = 15 * 60 * 1000, onLimit } = {}) {
   const hits = new Map();
   const limiter = (req, res, next) => {
     const key = `${req.ip}|${String(req.body?.email || '').toLowerCase()}`;
@@ -56,11 +60,10 @@ function loginLimiter({ max = 5, windowMs = 15 * 60 * 1000 } = {}) {
     const entry = hits.get(key);
     if (entry && nowMs - entry.first < windowMs && entry.count >= max) {
       const mins = Math.ceil((windowMs - (nowMs - entry.first)) / 60000);
-      return res.status(429).render('auth/login', {
-        title: 'Sign in',
-        email: req.body?.email || '',
-        error: `Too many failed attempts. Try again in ${mins} minute(s).`,
-      });
+      const error = `Too many attempts. Try again in ${mins} minute(s).`;
+      res.status(429);
+      if (onLimit) return onLimit(req, res, error);
+      return res.render('auth/login', { title: 'Sign in', email: req.body?.email || '', error });
     }
     next();
   };

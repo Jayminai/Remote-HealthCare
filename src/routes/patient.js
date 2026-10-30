@@ -101,7 +101,7 @@ router.post('/appointments/:id/cancel', async (req, res) => {
   if (await appts.cancel(appt, v.str(req.body.reason, 200) || 'Cancelled by patient')) {
     await audit(req, 'appointment_cancelled', 'appointment', appt.id);
     if (appt.doctor_id) {
-      await notifyUser(appt.doctor_id, 'Appointment cancelled', `${appt.patient_name} cancelled the appointment on ${t.fmtDateTime(appt.scheduled_at)}.`, '/doctor', { email: false });
+      await notifyUser(appt.doctor_id, 'Appointment cancelled', `${appt.patient_name} cancelled the appointment on ${t.fmtDateTime(appt.scheduled_at)}.`, '/staff/doctor', { email: false });
     }
     req.flash('success', 'Appointment cancelled. The slot is now free for someone else.');
   } else {

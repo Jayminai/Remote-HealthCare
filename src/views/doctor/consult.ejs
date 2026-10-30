@@ -11,7 +11,7 @@
   </div>
   <div class="row">
     <% if (remote) { %><a class="btn btn-light" href="https://<%= jitsiDomain %>/UHS-<%= appt.room_id %>" target="_blank" rel="noopener">Open call in new tab</a><% } %>
-    <a class="btn btn-light" href="/patients/<%= p.id %>" target="_blank" rel="noopener">Full record</a>
+    <a class="btn btn-light" href="/staff/patients/<%= p.id %>" target="_blank" rel="noopener">Full record</a>
   </div>
 </div>
 
@@ -30,7 +30,7 @@
     <div class="card">
       <h2>Consultation notes</h2>
       <%- include('../partials/errors') %>
-      <form method="post" action="/doctor/appointments/<%= appt.id %>/complete" novalidate>
+      <form method="post" action="/staff/doctor/appointments/<%= appt.id %>/complete" novalidate>
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <div class="field">
           <label for="presenting_complaint">Presenting complaint</label>

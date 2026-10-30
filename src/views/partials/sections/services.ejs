@@ -1,0 +1,55 @@
+<%# Service cards. Optional: showAll (adds a link to the full services page) %>
+<section class="section bg-gradient">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Our Services</span>
+      <h2 class="section-title">Complete Healthcare Support, Online and at the Clinic</h2>
+    </div>
+    <div class="service-grid">
+      <article class="service-card">
+        <img src="/static/img/cta.jpg" alt="" width="1600" height="1021" loading="lazy">
+        <div class="service-body">
+          <span class="service-icon"><i class="fa-regular fa-calendar-check" aria-hidden="true"></i></span>
+          <h3>Online Booking</h3>
+          <p>Pick a date and a free time slot that suits you. No double-booking — the least busy doctor is assigned if you have no preference.</p>
+          <a class="more" href="/how-it-works">How booking works <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </article>
+      <article class="service-card">
+        <img src="/static/img/hero.jpg" alt="" width="1600" height="900" loading="lazy">
+        <div class="service-body">
+          <span class="service-icon"><i class="fa-solid fa-video" aria-hidden="true"></i></span>
+          <h3>Remote Consultations</h3>
+          <p>Suitable cases are seen by secure video or audio call in a private room for each appointment, saving you an unnecessary trip.</p>
+          <a class="more" href="/services#consultation-types">Video, audio or in person <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </article>
+      <article class="service-card">
+        <img src="/static/img/records.jpg" alt="" width="1600" height="1067" loading="lazy">
+        <div class="service-body">
+          <span class="service-icon"><i class="fa-solid fa-file-medical" aria-hidden="true"></i></span>
+          <h3>Electronic Records</h3>
+          <p>Your consultations, prescriptions, vitals and history live in one secure file — no more missing folders at the records office.</p>
+          <a class="more" href="/faq#records-and-privacy">About your data <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </article>
+    </div>
+    <div class="mini-grid">
+      <div class="mini-card">
+        <span><i class="fa-regular fa-bell" aria-hidden="true"></i></span>
+        <div><h3>Reminders</h3><p>In the app and by email, 24 hours and 1 hour before your appointment and on your follow-up date.</p></div>
+      </div>
+      <div class="mini-card">
+        <span><i class="fa-regular fa-comments" aria-hidden="true"></i></span>
+        <div><h3>Message Your Doctor</h3><p>Follow-up questions go securely to the doctor who saw you.</p></div>
+      </div>
+      <div class="mini-card">
+        <span><i class="fa-solid fa-folder-open" aria-hidden="true"></i></span>
+        <div><h3>Existing UHS Folder?</h3><p>Visit the records office with your ID card to link your paper record to an online account.</p></div>
+      </div>
+    </div>
+    <% if (typeof showAll !== 'undefined' && showAll) { %>
+      <div class="section-more"><a class="btn btn-lg" href="/services">View all services <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></div>
+    <% } %>
+  </div>
+</section>

@@ -1,0 +1,40 @@
+<%- include('../partials/head') %>
+<div class="auth-split">
+  <div class="auth-visual">
+    <img class="auth-logo" src="/static/img/ui-logo.png" alt="University of Ibadan" width="600" height="200">
+    <h2>Locked out? It happens.</h2>
+    <p>We will email you a secure link to choose a new password.</p>
+    <ul class="checks">
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> The link works once and expires after 1 hour</li>
+      <li><i class="fa-solid fa-check" aria-hidden="true"></i> Your medical record is not affected</li>
+    </ul>
+  </div>
+  <div class="auth-form">
+    <span class="eyebrow">Patient account</span>
+    <h1>Forgot your password?</h1>
+    <% if (sent) { %>
+      <div class="alert alert-success" role="status">
+        If a patient account uses <strong><%= email %></strong>, we have sent it a link to reset the password.
+        Check your inbox and your spam folder. The link expires in 1 hour.
+      </div>
+      <p class="muted">No email after a few minutes? Check that you typed the address you registered with, or
+        <a href="/forgot-password">try again</a>. You can also visit the UHS records office for help.</p>
+      <a class="btn btn-light" href="/login"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Back to sign in</a>
+    <% } else { %>
+      <p class="muted">Enter the email address you registered with.</p>
+      <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
+      <form method="post" action="/forgot-password" novalidate>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" type="email" name="email" value="<%= email %>" autocomplete="email" required autofocus>
+        </div>
+        <button class="btn btn-block" type="submit">Send reset link</button>
+      </form>
+      <hr>
+      <p class="muted">Remembered it? <a href="/login">Sign in</a>.<br>
+        UHS staff: passwords for the staff portal are reset by the administrator.</p>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/foot') %>

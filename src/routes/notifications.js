@@ -15,14 +15,14 @@ router.get('/', async (req, res) => {
 // Opening a notification marks it read and follows its link.
 router.post('/:id/open', async (req, res) => {
   const n = await db.get('SELECT * FROM notifications WHERE id = ? AND user_id = ?', v.int(req.params.id), req.user.id);
-  if (!n) return res.redirect('/notifications');
+  if (!n) return res.redirect(`${res.locals.base}/notifications`);
   if (!n.read_at) await db.update('notifications', n.id, { read_at: t.now() });
-  res.redirect(v.localPath(n.link, '/notifications'));
+  res.redirect(v.localPath(n.link, `${res.locals.base}/notifications`));
 });
 
 router.post('/read-all', async (req, res) => {
   await db.run('UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL', t.now(), req.user.id);
-  res.redirect('/notifications');
+  res.redirect(`${res.locals.base}/notifications`);
 });
 
 module.exports = router;

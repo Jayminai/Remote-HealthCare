@@ -1,0 +1,12 @@
+<% if (!currentUser) { %>
+</main>
+<% } else { %>
+    </main>
+    <footer class="staff-footer">
+      &copy; <%= new Date().getFullYear() %> <%= clinicName %> · Staff portal · Authorised staff only — all record access is logged.
+    </footer>
+  </div>
+</div>
+<% } %>
+</body>
+</html>

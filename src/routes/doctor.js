@@ -59,20 +59,20 @@ router.get('/', async (req, res) => {
 router.post('/appointments/:id/start', async (req, res) => {
   const appt = await loadAppt(req);
   if (!appt) return notFound(res);
-  if (appt.status === 'in_progress') return res.redirect(`/doctor/appointments/${appt.id}/consult`);
+  if (appt.status === 'in_progress') return res.redirect(`/staff/doctor/appointments/${appt.id}/consult`);
   if (appt.scheduled_at.slice(0, 10) !== t.toDate()) {
     req.flash('error', 'You can only start consultations scheduled for today.');
-    return res.redirect('/doctor');
+    return res.redirect('/staff/doctor');
   }
   if (!await appts.start(appt, req.user.id)) {
     req.flash('error', 'This consultation cannot be started.');
-    return res.redirect('/doctor');
+    return res.redirect('/staff/doctor');
   }
   await audit(req, 'consultation_started', 'appointment', appt.id);
   if (appt.mode !== 'in_person') {
     await notifyPatient(appt.patient_id, 'Your doctor is ready', `${appts.doctorTitle(req.user.full_name)} has started your ${appts.MODES[appt.mode].toLowerCase()}. Join now.`, `/consult/${appt.id}`);
   }
-  res.redirect(`/doctor/appointments/${appt.id}/consult`);
+  res.redirect(`/staff/doctor/appointments/${appt.id}/consult`);
 });
 
 async function renderConsult(req, res, appt, form, errors = [], status = 200) {
@@ -101,7 +101,7 @@ router.get('/appointments/:id/consult', async (req, res) => {
   if (!appt) return notFound(res);
   if (appt.status !== 'in_progress') {
     req.flash('error', 'Start the consultation from your queue first.');
-    return res.redirect('/doctor');
+    return res.redirect('/staff/doctor');
   }
   await renderConsult(req, res, appt, { ...emptyConsult, presenting_complaint: appt.reason });
 });
@@ -111,7 +111,7 @@ router.post('/appointments/:id/complete', async (req, res) => {
   if (!appt || appt.doctor_id !== req.user.id) return notFound(res);
   if (appt.status !== 'in_progress') {
     req.flash('error', 'This consultation is not in progress.');
-    return res.redirect('/doctor');
+    return res.redirect('/staff/doctor');
   }
 
   const form = {
@@ -193,7 +193,7 @@ router.post('/appointments/:id/complete', async (req, res) => {
     '/patient/records'
   );
   req.flash('success', `Consultation with ${appt.patient_name} saved.`);
-  res.redirect('/doctor');
+  res.redirect('/staff/doctor');
 });
 
 router.post('/appointments/:id/no-show', async (req, res) => {
@@ -206,7 +206,7 @@ router.post('/appointments/:id/no-show', async (req, res) => {
   } else {
     req.flash('error', 'Only booked appointments whose time has passed can be marked as no-show.');
   }
-  res.redirect('/doctor');
+  res.redirect('/staff/doctor');
 });
 
 router.get('/patients', async (req, res) => {

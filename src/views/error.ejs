@@ -1,7 +1,8 @@
 <%- include('partials/head') %>
-<div class="narrow card">
+<div class="narrow card error-card">
+  <span class="error-icon"><i class="fa-solid fa-stethoscope" aria-hidden="true"></i></span>
   <h1><%= title %></h1>
   <p><%= message %></p>
-  <p><a class="btn btn-light" href="/">Go to home page</a></p>
+  <p><a class="btn" href="/">Go to home page <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a></p>
 </div>
 <%- include('partials/foot') %>
