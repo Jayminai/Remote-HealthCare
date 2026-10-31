@@ -1,26 +1,33 @@
 <%- include('../partials/head') %>
+<%# Sign-in for the staff portal (/staff/login) and the admin portal (/admin/login). %>
+<% const isAdmin = portal === 'admin'; %>
 <div class="staff-login">
   <div class="staff-login-panel">
-    <a class="staff-brand" href="/staff/login">
+    <a class="staff-brand" href="<%= base %>/login">
       <img src="/static/img/ui-crest.png" alt="" width="52" height="52">
-      <span><strong>UHS Staff Portal</strong><small>University Health Service, University of Ibadan</small></span>
+      <span><strong>UHS <%= isAdmin ? 'Admin' : 'Staff' %> Portal</strong><small>University Health Service, University of Ibadan</small></span>
     </a>
     <div>
-      <h2>For doctors, nurses, records officers and administrators</h2>
+      <h2><%= isAdmin ? 'For UHS administrators' : 'For doctors, nurses and records officers' %></h2>
       <ul class="checks">
-        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Accounts are created by the UHS administrator</li>
-        <li><i class="fa-solid fa-check" aria-hidden="true"></i> Every view of a patient record is logged</li>
+        <% if (isAdmin) { %>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Service dashboard, staff accounts, audit log and email</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Every sign-in and change is logged</li>
+        <% } else { %>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Accounts are created by the UHS administrator</li>
+          <li><i class="fa-solid fa-check" aria-hidden="true"></i> Every view of a patient record is logged</li>
+        <% } %>
         <li><i class="fa-solid fa-check" aria-hidden="true"></i> You are signed out after a period of inactivity</li>
       </ul>
     </div>
-    <p class="staff-login-note"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Authorised UHS staff only.</p>
+    <p class="staff-login-note"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Authorised UHS <%= isAdmin ? 'administrators' : 'staff' %> only.</p>
   </div>
   <div class="staff-login-form">
-    <span class="eyebrow">Staff sign in</span>
+    <span class="eyebrow"><%= isAdmin ? 'Administrator sign in' : 'Staff sign in' %></span>
     <h1>Welcome back</h1>
     <p class="muted">Sign in with the email address your administrator registered.</p>
     <% if (error) { %><div class="alert alert-error" role="alert"><%= error %></div><% } %>
-    <form method="post" action="/staff/login" novalidate>
+    <form method="post" action="<%= base %>/login" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="field">
         <label for="email">Work email</label>
@@ -30,10 +37,15 @@
         <label for="password">Password</label>
         <input id="password" type="password" name="password" autocomplete="current-password" required>
       </div>
-      <button class="btn btn-block" type="submit">Sign in to staff portal</button>
+      <button class="btn btn-block" type="submit"><i class="fa-solid fa-right-to-bracket" aria-hidden="true"></i> Sign in to <%= isAdmin ? 'admin' : 'staff' %> portal</button>
     </form>
     <hr>
-    <p class="muted">Forgot your password? Ask the UHS administrator to issue a temporary one.</p>
+    <p class="muted">Forgot your password? <%= isAdmin ? 'Ask another administrator to issue a temporary one.' : 'Ask the UHS administrator to issue a temporary one.' %></p>
+    <% if (isAdmin) { %>
+      <p class="muted">Doctor, nurse or records officer? <a href="/staff/login">Sign in to the staff portal</a>.</p>
+    <% } else { %>
+      <p class="muted">Administrator? <a href="/admin/login">Sign in to the admin portal</a>.</p>
+    <% } %>
     <p class="muted">Patient? <a href="/login">Sign in on the patient website</a>.</p>
   </div>
 </div>

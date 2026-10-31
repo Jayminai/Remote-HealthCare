@@ -9,8 +9,32 @@
     <h1><%= otherName %></h1>
     <% if (!isPatient) { %><span class="muted"><%= patient.uhs_number %> · <a href="/staff/patients/<%= patient.id %>">View record</a></span><% } %>
   </div>
+  <%# Only the doctor can start a call, once the conversation has begun; the patient joins it from the banner below. %>
+  <% if (!isPatient && patient.user_id && messages.length) { %>
+    <div class="chat-actions">
+      <% [['video', 'fa-video', 'Video call', 'Start a video call'], ['audio', 'fa-phone', 'Audio call', 'Start an audio call']].forEach(([mode, icon, label, action]) => { %>
+        <form method="post" action="<%= base %>/messages/<%= patient.id %>/<%= doctor.id %>/call">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="mode" value="<%= mode %>">
+          <button class="btn btn-light chat-call" type="submit" title="<%= action %>" aria-label="<%= action %>"><i class="fa-solid <%= icon %>" aria-hidden="true"></i><span> <%= label %></span></button>
+        </form>
+      <% }) %>
+    </div>
+  <% } %>
 </div>
 <div class="card narrow chat-card" style="max-width:820px">
+  <%# A call in progress: shown and hidden live (public/js/live.js). %>
+  <div class="call-banner" data-call-banner <%= call ? '' : 'hidden' %>>
+    <span class="call-banner-icon" aria-hidden="true"><i class="fa-solid fa-phone-volume"></i></span>
+    <span class="call-banner-text" data-call-text><%= call ? call.label : '' %></span>
+    <a class="btn btn-accent btn-sm btn-live" data-call-join href="<%= call ? call.url : '#' %>"><i class="fa-solid <%= call && call.mode === 'audio' ? 'fa-phone' : 'fa-video' %>" aria-hidden="true"></i> <%= isPatient ? 'Join' : 'Rejoin' %></a>
+    <% if (!isPatient) { %>
+      <form method="post" data-call-end action="<%= call ? call.endUrl : '#' %>" data-confirm="End this call for both of you?">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-phone-slash" aria-hidden="true"></i> End</button>
+      </form>
+    <% } %>
+  </div>
   <%# New messages, read receipts and "typing…" arrive without reloading (public/js/live.js). %>
   <div class="thread" data-thread="<%= base %>/messages/<%= patient.id %>/<%= doctor.id %>"
        data-last-id="<%= messages.length ? messages[messages.length - 1].id : 0 %>" aria-live="polite">
@@ -42,7 +66,7 @@
     <div class="chat-input">
       <%# Sending photos needs JavaScript, so the button only appears once live.js has loaded. %>
       <button type="button" class="btn btn-light chat-attach" data-photo-button hidden title="Send a photo" aria-label="Send a photo"><i class="fa-regular fa-image" aria-hidden="true"></i></button>
-      <input type="file" accept="image/*" data-photo-input hidden>
+      <input type="file" accept="image/*,.heic,.heif,.hif,.tif,.tiff,.avif,.svg" data-photo-input hidden>
       <label for="body" class="sr-only">Your message</label>
       <textarea id="body" name="body" maxlength="2000" rows="1" placeholder="Type a message" required></textarea>
       <button class="btn chat-send" type="submit" aria-label="Send"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i><span> Send</span></button>

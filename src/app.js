@@ -11,7 +11,7 @@ const { runReminders } = require('./services/reminders');
 const t = require('./utils/time');
 const { MODES } = require('./services/appointments');
 const { ENTRY_TYPES, SOURCES } = require('./services/records');
-const { loadUser, homeFor, isBackground, isPageView } = require('./middleware/auth');
+const { loadUser, homeFor, isBackground, isPageView, PORTAL_BASES, portalFor, portalOfPath } = require('./middleware/auth');
 const { markLinkRead } = require('./services/notify');
 const { unreadCounts } = require('./services/live');
 const { securityHeaders, csrf } = require('./middleware/security');
@@ -56,29 +56,29 @@ function asset(file) {
 }
 
 /**
- * Patients use the public site and staff use /staff. A signed-in user who opens a page meant for
- * the other group is sent to the matching page on their own side (or refused, for form posts).
+ * Patients use the public site, doctors and nurses /staff, administrators /admin. A signed-in user who opens
+ * a page in another portal is sent to the matching page in their own (or refused, for form posts).
  */
 const SHARED_PATHS = /^\/(messages|notifications|account|live)(\/|$)/;
 function portalGuard(req, res, next) {
   if (!req.user) return next();
-  const isStaff = req.user.role !== 'patient';
-  const inStaffPortal = res.locals.portal === 'staff';
-  if (isStaff === inStaffPortal) return next();
+  const own = portalFor(req.user.role);
+  const here = res.locals.portal;
+  if (own === here) return next();
   const denied = () => res.status(403).render('error', { title: 'Access denied', message: 'You do not have permission to view this page.' });
 
-  // Staff opening messages, notifications or their account on the public side.
-  if (isStaff && SHARED_PATHS.test(req.path)) {
-    return req.method === 'GET' ? res.redirect(`/staff${req.originalUrl}`) : denied();
+  if (here === 'public') {
+    // Staff or administrators opening messages, notifications or their account on the public side.
+    if (SHARED_PATHS.test(req.path)) {
+      return req.method === 'GET' ? res.redirect(`${PORTAL_BASES[own]}${req.originalUrl}`) : denied();
+    }
+    // Other public pages (home, FAQs, sign-out); each route still checks roles.
+    return next();
   }
-  // Patients inside the staff portal.
-  if (!isStaff) {
-    if (req.method !== 'GET') return denied();
-    const rest = req.originalUrl.slice('/staff'.length);
-    return res.redirect(SHARED_PATHS.test(rest) ? rest : homeFor(req.user));
-  }
-  // Staff on other public pages (home, FAQs, sign-out); each route still checks roles.
-  next();
+  // Inside a portal that is not theirs: the same shared page in their own portal, otherwise their home page.
+  if (req.method !== 'GET') return denied();
+  const rest = req.originalUrl.slice(PORTAL_BASES[here].length);
+  res.redirect(SHARED_PATHS.test(rest) ? `${PORTAL_BASES[own]}${rest}` : homeFor(req.user));
 }
 
 function createApp() {
@@ -155,12 +155,12 @@ function createApp() {
   });
 
   // Values available in every template (set before anything can render a page).
-  // portal: 'staff' for the staff portal under /staff, 'public' for the patient-facing site.
+  // portal: 'public' (patient-facing site), 'staff' (under /staff) or 'admin' (under /admin); base is its address.
   app.use((req, res, next) => {
-    const portal = req.path === '/staff' || req.path.startsWith('/staff/') ? 'staff' : 'public';
+    const portal = portalOfPath(req.path);
     Object.assign(res.locals, {
       portal,
-      base: portal === 'staff' ? '/staff' : '',
+      base: PORTAL_BASES[portal],
       t,
       MODES,
       STATUS_LABELS,
@@ -197,6 +197,9 @@ function createApp() {
     next();
   });
 
+  // The admin pages used to live in the staff portal; keep old bookmarks and links working.
+  app.get(/^\/staff\/admin(\/|$)/, (req, res) => res.redirect(req.originalUrl.slice('/staff'.length)));
+
   app.use(portalGuard);
 
   // Public site and patient area.
@@ -210,18 +213,23 @@ function createApp() {
   app.use('/notifications', require('./routes/notifications'));
   app.use('/live', require('./routes/live'));
 
-  // Staff portal (doctors, nurses / records office, administrators).
+  // Staff portal (doctors, nurses / records office).
   app.use('/staff/doctor', require('./routes/doctor'));
   app.use('/staff/records', require('./routes/records'));
   app.use('/staff/patients', require('./routes/patients'));
-  app.use('/staff/admin', require('./routes/admin'));
   app.use('/staff/messages', require('./routes/messages'));
   app.use('/staff/notifications', require('./routes/notifications'));
   app.use('/staff/live', require('./routes/live'));
   app.use('/staff/account', require('./routes/account'));
 
+  // Admin portal (administrators).
+  app.use('/admin/notifications', require('./routes/notifications'));
+  app.use('/admin/live', require('./routes/live'));
+  app.use('/admin/account', require('./routes/account'));
+  app.use('/admin', require('./routes/admin'));
+
   // Staff pages used to live at the top level; keep old bookmarks and notification links working.
-  app.get(/^\/(doctor|records|patients|admin)(\/|$)/, (req, res) => res.redirect(`/staff${req.originalUrl}`));
+  app.get(/^\/(doctor|records|patients)(\/|$)/, (req, res) => res.redirect(`/staff${req.originalUrl}`));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Not found', message: 'The page you requested does not exist.' });

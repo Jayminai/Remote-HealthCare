@@ -110,6 +110,10 @@ class Client {
   staffLogin(email, password = 'Passw0rd1') {
     return this.login(email, password, '/staff/login');
   }
+
+  adminLogin(email, password = 'Passw0rd1') {
+    return this.login(email, password, '/admin/login');
+  }
 }
 
 module.exports = { db, t, appts, makeUser, nextClinicDay, Client };

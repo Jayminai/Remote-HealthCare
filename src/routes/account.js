@@ -32,10 +32,29 @@ router.post('/password', async (req, res) => {
   res.redirect(homeFor(user));
 });
 
+// Staff see their own account details and keep their phone number up to date; their name, email and
+// role are set by an administrator.
+async function renderStaffProfile(req, res, phone = null, errors = [], status = 200) {
+  const user = await db.get(
+    'SELECT full_name, email, phone, role, specialty, last_login_at, created_at FROM users WHERE id = ?', req.user.id
+  );
+  res.status(status).render('account/staff_profile', { title: 'My profile', user: { ...user, phone: phone ?? user.phone }, errors });
+}
+
 // Patients can keep their own contact details up to date.
-router.get('/profile', requireRole('patient'), async (req, res) => {
+router.get('/profile', async (req, res) => {
+  if (req.user.role !== 'patient') return renderStaffProfile(req, res);
   const patient = await patientForUser(req.user.id);
   res.render('account/profile', { title: 'My profile', patient, errors: [] });
+});
+
+router.post('/profile/staff', requireRole('doctor', 'nurse', 'admin'), async (req, res) => {
+  const phone = v.str(req.body.phone, 20);
+  if (phone && !v.isPhone(phone)) return renderStaffProfile(req, res, phone, ['Enter a valid phone number.'], 400);
+  await db.update('users', req.user.id, { phone: phone || null });
+  await audit(req, 'staff_profile_updated', 'user', req.user.id);
+  req.flash('success', 'Profile updated.');
+  res.redirect(`${res.locals.base}/account/profile`);
 });
 
 router.post('/profile', requireRole('patient'), async (req, res) => {

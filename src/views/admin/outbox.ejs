@@ -1,7 +1,7 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <div><h1><i class="fa-solid fa-envelope-open-text h-icon" aria-hidden="true"></i>Email outbox</h1><span class="muted">Every email the system sends, newest first</span></div>
-  <form method="post" action="/staff/admin/outbox/test">
+  <form method="post" action="/admin/outbox/test">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <button class="btn" type="submit"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i> Send me a test email</button>
   </form>

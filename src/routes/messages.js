@@ -1,5 +1,7 @@
 // Secure messaging between patients and doctors (replaces follow-up phone calls).
+const crypto = require('node:crypto');
 const express = require('express');
+const config = require('../config');
 const db = require('../db');
 const t = require('../utils/time');
 const v = require('../utils/validate');
@@ -8,6 +10,7 @@ const { audit } = require('../services/audit');
 const { notifyUser, markLinkRead } = require('../services/notify');
 const { summary, unreadCounts } = require('../services/live');
 const { patientForUser } = require('../services/patients');
+const { doctorTitle } = require('../services/appointments');
 
 // "Typing…" shows while the other person typed within this many milliseconds.
 const TYPING_MS = 6000;
@@ -130,7 +133,8 @@ router.get('/:patientId/:doctorId', async (req, res) => {
   res.locals.unreadMessages = counts.messages;
   res.locals.unreadNotifications = counts.notifications;
   const messages = await db.all(`${MESSAGES_SQL} ORDER BY m.created_at, m.id`, patient.id, doctor.id);
-  res.render('messages/thread', { title: 'Conversation', bodyClass: 'chat-screen', patient, doctor, messages });
+  const call = presentCall(req, res, patient, doctor, await activeCall(patient, doctor));
+  res.render('messages/thread', { title: 'Conversation', bodyClass: 'chat-screen', patient, doctor, messages, call });
 });
 
 // Polled by the open conversation: new messages, read receipts and whether the other person is typing,
@@ -155,7 +159,12 @@ router.get('/:patientId/:doctorId/updates', async (req, res) => {
   );
   res.json({
     ...await summary(req.user, v.int(req.query.since) ?? -1, res.locals.base),
-    thread: { messages: messages.map((m) => present(m, req.user, threadUrl(res, patient, doctor))), lastReadId: lastRead.id || 0, typing: Boolean(typing) },
+    thread: {
+      messages: messages.map((m) => present(m, req.user, threadUrl(res, patient, doctor))),
+      lastReadId: lastRead.id || 0,
+      typing: Boolean(typing),
+      call: presentCall(req, res, patient, doctor, await activeCall(patient, doctor)),
+    },
   });
 });
 
@@ -225,6 +234,117 @@ router.post('/:patientId/:doctorId', express.json({ limit: '4mb' }), async (req,
   await notifyUser(recipient, 'New secure message', `You have a new message from ${req.user.full_name}. Sign in to read it.`, link);
   if (json) return res.status(201).json({ message: present(await db.get(`${MESSAGES_SQL} AND m.id = ?`, patient.id, doctor.id, id), req.user, url) });
   res.redirect(`${url}#latest`);
+});
+
+// ---- Quick calls ----
+// Once a conversation has started, the doctor can call the patient straight away (video or audio) in a private
+// room. Patients cannot start a call; they are notified and join the doctor's.
+
+const CALL_MINUTES = 60; // a call left open counts as over after this long
+
+/** The call in progress in this conversation, if any. */
+function activeCall(patient, doctor) {
+  return db.get(
+    `SELECT * FROM quick_calls WHERE patient_id = ? AND doctor_id = ? AND ended_at IS NULL AND started_at > ?
+      ORDER BY id DESC LIMIT 1`,
+    patient.id, doctor.id, t.toDateTime(t.addMinutes(new Date(), -CALL_MINUTES), true)
+  );
+}
+
+const callUrl = (base, patient, doctor, call) => `${base}/messages/${patient.id}/${doctor.id}/call/${call.id}`;
+
+/** A call as the conversation page shows it, worded for whoever is looking. */
+function presentCall(req, res, patient, doctor, call) {
+  if (!call) return null;
+  const url = callUrl(res.locals.base, patient, doctor, call);
+  const kind = call.mode === 'audio' ? 'audio' : 'video';
+  return {
+    id: call.id,
+    mode: call.mode,
+    url,
+    endUrl: `${url}/end`,
+    label: req.user.role === 'doctor'
+      ? `Your ${kind} call with ${patient.full_name} is open`
+      : `${doctorTitle(doctor.full_name)} is calling you (${kind} call)`,
+  };
+}
+
+/** The call with this id in this conversation, if it is still going. */
+async function findCall(req, patient, doctor) {
+  const call = await db.get(
+    'SELECT * FROM quick_calls WHERE id = ? AND patient_id = ? AND doctor_id = ?', v.int(req.params.callId), patient.id, doctor.id
+  );
+  const active = await activeCall(patient, doctor);
+  return call && active && active.id === call.id ? call : null;
+}
+
+router.post('/:patientId/:doctorId/call', requireRole('doctor'), async (req, res) => {
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
+  const { patient, doctor } = access;
+  const url = threadUrl(res, patient, doctor);
+  if (!patient.user_id) {
+    req.flash('error', 'This patient has no online account, so they cannot join a call. Please phone them instead.');
+    return res.redirect(url);
+  }
+  if (!await db.get('SELECT 1 AS x FROM messages WHERE patient_id = ? AND doctor_id = ? LIMIT 1', patient.id, doctor.id)) {
+    req.flash('error', 'Send the patient a message first: a call can be started once the conversation has begun.');
+    return res.redirect(url);
+  }
+  // One call at a time: starting again rejoins the call already open.
+  let call = await activeCall(patient, doctor);
+  if (!call) {
+    const id = await db.insert('quick_calls', {
+      patient_id: patient.id,
+      doctor_id: doctor.id,
+      mode: req.body.mode === 'audio' ? 'audio' : 'video',
+      room_id: crypto.randomBytes(12).toString('hex'),
+      started_at: t.now(),
+    });
+    call = await db.get('SELECT * FROM quick_calls WHERE id = ?', id);
+    await audit(req, 'quick_call_started', 'quick_call', id, { patient: patient.id, mode: call.mode });
+    // In-app only: an email would arrive too late to answer a call.
+    await notifyUser(
+      patient.user_id,
+      `${doctorTitle(doctor.full_name)} is calling you`,
+      `A ${call.mode} call is waiting for you. Open it to join.`,
+      callUrl('', patient, doctor, call),
+      { email: false }
+    );
+  }
+  res.redirect(callUrl(res.locals.base, patient, doctor, call));
+});
+
+router.get('/:patientId/:doctorId/call/:callId', async (req, res) => {
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
+  const { patient, doctor } = access;
+  const call = await findCall(req, patient, doctor);
+  if (!call) {
+    req.flash('info', 'This call has ended.');
+    return res.redirect(threadUrl(res, patient, doctor));
+  }
+  const isDoctor = req.user.role === 'doctor';
+  if (!isDoctor) await audit(req, 'quick_call_joined', 'quick_call', call.id);
+  res.render('messages/call', {
+    title: call.mode === 'audio' ? 'Audio call' : 'Video call',
+    patient, doctor, call,
+    threadPath: threadUrl(res, patient, doctor),
+    jitsiDomain: config.jitsiDomain,
+    callName: isDoctor ? doctorTitle(req.user.full_name) : req.user.full_name,
+  });
+});
+
+router.post('/:patientId/:doctorId/call/:callId/end', requireRole('doctor'), async (req, res) => {
+  const access = await threadAccess(req, v.int(req.params.patientId), v.int(req.params.doctorId));
+  if (!access) return res.status(404).render('error', { title: 'Not found', message: 'Conversation not found.' });
+  const call = await findCall(req, access.patient, access.doctor);
+  if (call) {
+    await db.update('quick_calls', call.id, { ended_at: t.now() });
+    await audit(req, 'quick_call_ended', 'quick_call', call.id);
+    req.flash('success', 'Call ended.');
+  }
+  res.redirect(threadUrl(res, access.patient, access.doctor));
 });
 
 module.exports = router;

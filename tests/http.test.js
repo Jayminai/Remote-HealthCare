@@ -90,7 +90,7 @@ test('full journey: register, book, consult, prescribe, follow up', async () => 
   r = await patient.get('/staff/patients/1');
   assert.equal(r.status, 302);
   assert.equal(r.location, '/patient');
-  assert.equal((await patient.get('/staff/admin')).location, '/patient');
+  assert.equal((await patient.get('/admin')).location, '/patient');
 
   // 3. Move the appointment to today so the doctor can start it now.
   await db.update('appointments', booked.id, { scheduled_at: `${t.toDate()} 00:00` });
@@ -196,6 +196,10 @@ test('notifications open their content, clear when the page is opened directly, 
   assert.equal(r.status, 204);
   let updates = await doctor.live(`/staff${thread}/updates?after=0`);
   assert.equal(updates.json.thread.typing, true);
+  // No call before the conversation has begun.
+  r = await doctor.post(`/staff${thread}/call`, { mode: 'video' }, `/staff${thread}`);
+  assert.equal(r.location, `/staff${thread}`);
+  assert.equal(await db.get('SELECT id FROM quick_calls WHERE patient_id = ?', appt.patient_id), undefined);
   r = await doctor.post(`/staff${thread}`, { body: 'See you on the call' }, `/staff${thread}`, { accept: 'application/json' });
   assert.equal(r.status, 201);
   const sent = JSON.parse(r.text).message;
@@ -247,6 +251,33 @@ test('notifications open their content, clear when the page is opened directly, 
   r = await patient.postJson(thread, { body: '', image: `data:image/jpeg;base64,${'A'.repeat(4.5 * 1024 * 1024)}` }, thread);
   assert.equal(r.status, 413);
   assert.match(r.json.error, /too large/);
+
+  // Quick calls: the doctor can call the patient from the conversation; the patient can only join.
+  r = await patient.post(`${thread}/call`, { mode: 'video' }, thread);
+  assert.equal(r.status, 403);
+  r = await doctor.post(`/staff${thread}/call`, { mode: 'audio' }, `/staff${thread}`);
+  const callId = (await db.get('SELECT id FROM quick_calls WHERE patient_id = ? AND doctor_id = ?', appt.patient_id, doctorId)).id;
+  assert.equal(r.location, `/staff${thread}/call/${callId}`);
+  assert.match((await doctor.get(r.location)).text, /data-room="UHS-call-[0-9a-f]{24}"/);
+  // Starting again while it is open rejoins the same call.
+  r = await doctor.post(`/staff${thread}/call`, { mode: 'video' }, `/staff${thread}`);
+  assert.equal(r.location, `/staff${thread}/call/${callId}`);
+  // The patient is told straight away (in the app, not by email) and sees it in the conversation.
+  const ring = await db.get("SELECT * FROM notifications WHERE title LIKE '%is calling you' ORDER BY id DESC LIMIT 1");
+  assert.equal(ring.link, `${thread}/call/${callId}`);
+  updates = await patient.live(`${thread}/updates`);
+  assert.equal(updates.json.thread.call.url, `${thread}/call/${callId}`);
+  assert.match(updates.json.thread.call.label, /is calling you \(audio call\)/);
+  assert.match((await patient.get(thread)).text, /data-call-banner >/);
+  r = await patient.get(`${thread}/call/${callId}`);
+  assert.equal(r.status, 200);
+  assert.match(r.text, /data-audio-only="true"/);
+  // Only the doctor ends it; afterwards the call is gone for both.
+  assert.equal((await patient.post(`${thread}/call/${callId}/end`, {}, thread)).status, 403);
+  r = await doctor.post(`/staff${thread}/call/${callId}/end`, {}, `/staff${thread}`);
+  assert.equal(r.location, `/staff${thread}`);
+  assert.equal((await patient.live(`${thread}/updates`)).json.thread.call, null);
+  assert.equal((await patient.get(`${thread}/call/${callId}`)).location, thread);
 
   // Without a session, the script is told to reload instead of being sent the sign-in page.
   r = await new Client(base).live('/live');
@@ -321,14 +352,20 @@ test('records office registers a walk-in, flags duplicates and records vitals', 
 
 test('admin dashboard, user management and audit log', async () => {
   const admin = new Client(base);
-  await admin.staffLogin('admin@test.ng');
-  const dash = await admin.get('/staff/admin');
+  assert.equal((await admin.adminLogin('admin@test.ng')).location, '/admin');
+  const dash = await admin.get('/admin');
   assert.equal(dash.status, 200);
   assert.match(dash.text, /Peak hours/);
-  assert.equal((await admin.get('/staff/admin/audit')).status, 200);
-  assert.equal((await admin.get('/staff/admin/outbox')).status, 200);
+  assert.match(dash.text, /UHS Admin Portal/);
+  assert.equal((await admin.get('/admin/audit')).status, 200);
+  assert.equal((await admin.get('/admin/outbox')).status, 200);
+  // Old admin addresses in the staff portal still work.
+  assert.equal((await admin.get('/staff/admin/audit?action=login')).location, '/admin/audit?action=login');
+  // Notifications and the account pages have admin-portal addresses too.
+  assert.equal((await admin.get('/staff/notifications')).location, '/admin/notifications');
+  assert.equal((await admin.get('/admin/account/profile')).status, 200);
 
-  let r = await admin.post('/staff/admin/users/new', { role: 'doctor', full_name: 'Dr New Person', email: 'new.doc@test.ng', specialty: 'GP' }, '/staff/admin/users/new');
+  let r = await admin.post('/admin/users/new', { role: 'doctor', full_name: 'Dr New Person', email: 'new.doc@test.ng', specialty: 'GP' }, '/admin/users/new');
   assert.equal(r.status, 200);
   assert.match(r.text, /Temporary password/);
   assert.match(r.text, /\/staff\/login/);
@@ -338,24 +375,33 @@ test('admin dashboard, user management and audit log', async () => {
   assert.doesNotMatch(welcome.body, new RegExp(r.text.match(/class="secret">([^<]+)</)[1]));
 
   // The test-email button records an email to the administrator.
-  r = await admin.post('/staff/admin/outbox/test', {}, '/staff/admin/outbox');
-  assert.equal(r.location, '/staff/admin/outbox');
+  r = await admin.post('/admin/outbox/test', {}, '/admin/outbox');
+  assert.equal(r.location, '/admin/outbox');
   assert.ok(await db.get("SELECT id FROM email_outbox WHERE to_email = 'admin@test.ng' AND subject = 'UHS Telemedicine test email'"));
 
   // Deactivated accounts cannot sign in.
   const id = (await db.get("SELECT id FROM users WHERE email = 'new.doc@test.ng'")).id;
-  r = await admin.post(`/staff/admin/users/${id}/toggle`, {}, '/staff/admin/users');
+  r = await admin.post(`/admin/users/${id}/toggle`, {}, '/admin/users');
   assert.equal((await db.get('SELECT is_active FROM users WHERE id = ?', id)).is_active, 0);
 
-  // Admins never see clinical records.
-  assert.equal((await admin.get('/staff/patients/1')).status, 403);
+  // A new administrator is sent the admin portal's sign-in address.
+  r = await admin.post('/admin/users/new', { role: 'admin', full_name: 'Second Admin', email: 'admin2@test.ng' }, '/admin/users/new');
+  assert.match(r.text, /\/admin\/login/);
+  assert.match((await db.get("SELECT body FROM email_outbox WHERE to_email = 'admin2@test.ng'")).body, /\/admin\/login/);
+
+  // Admins never see clinical records: staff-portal pages send them back to the admin portal.
+  r = await admin.get('/staff/patients/1');
+  assert.equal(r.location, '/admin');
+  assert.doesNotMatch(r.text, /Allerg|Diagnos/);
 });
 
-test('patients and staff sign in on separate pages', async () => {
+test('patients, staff and administrators sign in on separate pages', async () => {
   const c = new Client(base);
   assert.match((await c.get('/staff/login')).text, /Staff sign in/);
-  // Signed-out visitors to the staff portal go to the staff sign-in page.
-  assert.equal((await c.get('/staff/admin')).location, '/staff/login');
+  assert.match((await c.get('/admin/login')).text, /Administrator sign in/);
+  // Signed-out visitors go to the sign-in page of the portal they asked for.
+  assert.equal((await c.get('/staff/doctor')).location, '/staff/login');
+  assert.equal((await c.get('/admin/users')).location, '/admin/login');
   // Old staff addresses still work.
   assert.equal((await c.get('/doctor?date=2026-01-05')).location, '/staff/doctor?date=2026-01-05');
 
@@ -369,6 +415,17 @@ test('patients and staff sign in on separate pages', async () => {
   r = await c.staffLogin('portal.patient@test.ng');
   assert.equal(r.status, 403);
   assert.ok(await db.get("SELECT id FROM audit_log WHERE action = 'login_wrong_portal'"));
+  // Administrators use the admin portal, and doctors and nurses cannot sign in there.
+  r = await c.staffLogin('admin@test.ng');
+  assert.equal(r.status, 403);
+  assert.match(r.text, /admin portal/);
+  r = await c.adminLogin('doctor@test.ng');
+  assert.equal(r.status, 403);
+  // A doctor who opens an admin page is sent back to their own portal.
+  const doc = new Client(base);
+  await doc.staffLogin('doctor@test.ng');
+  assert.equal((await doc.get('/admin/users')).location, '/staff/doctor');
+  assert.equal((await doc.post('/admin/users/new', { role: 'admin', full_name: 'X', email: 'x@test.ng' }, '/staff/doctor')).status, 403);
 
   // Signing out from the staff portal returns to the staff sign-in page.
   const doctor = new Client(base);
@@ -381,6 +438,22 @@ test('patients and staff sign in on separate pages', async () => {
   assert.match(r.text, /href="\/staff"[^>]*>Staff Portal/);
   r = await doctor.post('/logout', {}, '/staff/doctor');
   assert.equal(r.location, '/staff/login');
+});
+
+test('staff see their own profile and can update their phone number', async () => {
+  const doctor = new Client(base);
+  await doctor.staffLogin('doctor@test.ng');
+  // The profile button in the staff header opens the profile page (on phones it opens a menu instead).
+  assert.match((await doctor.get('/staff/doctor')).text, /class="staff-user" href="\/staff\/account\/profile"/);
+  let r = await doctor.get('/staff/account/profile');
+  assert.equal(r.status, 200);
+  assert.match(r.text, /Personal information/);
+  assert.match(r.text, /doctor@test\.ng/);
+  r = await doctor.post('/staff/account/profile/staff', { phone: 'not a phone' }, '/staff/account/profile');
+  assert.equal(r.status, 400);
+  r = await doctor.post('/staff/account/profile/staff', { phone: '08031112222' }, '/staff/account/profile');
+  assert.equal(r.location, '/staff/account/profile');
+  assert.equal((await db.get("SELECT phone FROM users WHERE email = 'doctor@test.ng'")).phone, '08031112222');
 });
 
 test('patient resets a forgotten password by email', async () => {

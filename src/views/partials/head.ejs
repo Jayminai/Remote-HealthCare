@@ -1,2 +1,2 @@
-<%# Page start. The staff portal (/staff) and the public site have different layouts. %>
-<% if (portal === 'staff') { %><%- include('staff_head') %><% } else { %><%- include('public_head') %><% } %>
+<%# Page start. The staff and admin portals share a sidebar layout; the public site has its own. %>
+<% if (portal !== 'public') { %><%- include('staff_head') %><% } else { %><%- include('public_head') %><% } %>

@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db');
 const t = require('../utils/time');
 const v = require('../utils/validate');
-const { requireAuth, requireRole } = require('../middleware/auth');
+const { requireAuth, requireRole, loginPathFor, portalFor } = require('../middleware/auth');
 const { audit } = require('../services/audit');
 const { sendEmail } = require('../services/notify');
 const config = require('../config');
@@ -147,38 +147,38 @@ router.post('/users/new', async (req, res) => {
   // The email has the sign-in address only; the administrator hands over the temporary password in person.
   await sendEmail(form.email, 'Your UHS Telemedicine staff account', `Hello ${form.full_name},
 
-An administrator has created a ${STAFF_ROLES[form.role].toLowerCase()} account for you on the UHS Telemedicine staff portal.
+An administrator has created a ${STAFF_ROLES[form.role].toLowerCase()} account for you on the UHS Telemedicine ${portalFor(form.role)} portal.
 
-Sign in at: ${config.appUrl}/staff/login
+Sign in at: ${config.appUrl}${loginPathFor(portalFor(form.role))}
 Email: ${form.email}
 
 Use the temporary password the administrator gives you. You will be asked to choose your own password when you first sign in.
 
 ${config.clinic.name}`);
-  res.render('admin/credentials', { title: 'Account created', name: form.full_name, email: form.email, password, signInUrl: `${config.appUrl}/staff/login` });
+  res.render('admin/credentials', { title: 'Account created', name: form.full_name, email: form.email, password, signInUrl: `${config.appUrl}${loginPathFor(portalFor(form.role))}` });
 });
 
 router.post('/users/:id/toggle', async (req, res) => {
   const id = v.int(req.params.id);
   const user = await db.get('SELECT id, is_active, full_name FROM users WHERE id = ?', id);
-  if (!user) return res.redirect('/staff/admin/users');
+  if (!user) return res.redirect('/admin/users');
   if (user.id === req.user.id) {
     req.flash('error', 'You cannot deactivate your own account.');
-    return res.redirect('/staff/admin/users');
+    return res.redirect('/admin/users');
   }
   await db.update('users', id, { is_active: user.is_active ? 0 : 1 });
   await audit(req, user.is_active ? 'account_deactivated' : 'account_activated', 'user', id);
   req.flash('success', `${user.full_name} ${user.is_active ? 'deactivated' : 'activated'}.`);
-  res.redirect('/staff/admin/users');
+  res.redirect('/admin/users');
 });
 
 router.post('/users/:id/reset-password', async (req, res) => {
-  const user = await db.get('SELECT id, full_name, email FROM users WHERE id = ?', v.int(req.params.id));
-  if (!user) return res.redirect('/staff/admin/users');
+  const user = await db.get('SELECT id, full_name, email, role FROM users WHERE id = ?', v.int(req.params.id));
+  if (!user) return res.redirect('/admin/users');
   const password = tempPassword();
   await db.update('users', user.id, { password_hash: bcrypt.hashSync(password, 10), must_change_password: 1 });
   await audit(req, 'password_reset_by_admin', 'user', user.id);
-  const signInUrl = `${config.appUrl}${user.role === 'patient' ? '/login' : '/staff/login'}`;
+  const signInUrl = `${config.appUrl}${loginPathFor(portalFor(user.role))}`;
   res.render('admin/credentials', { title: 'Password reset', name: user.full_name, email: user.email, password, signInUrl });
 });
 
@@ -204,14 +204,14 @@ router.get('/outbox', async (req, res) => {
 router.post('/outbox/test', async (req, res) => {
   const mail = await sendEmail(req.user.email, 'UHS Telemedicine test email', `Hello ${req.user.full_name},
 
-This is a test email from the UHS Telemedicine staff portal. If you can read this, email sending works.
+This is a test email from the UHS Telemedicine admin portal. If you can read this, email sending works.
 
 Sent at ${t.fmtDateTime(t.now())}.`);
   await audit(req, 'test_email_sent', 'email_outbox', mail?.id ?? null, { status: mail?.status });
   if (mail?.status === 'sent') req.flash('success', `Test email sent to ${req.user.email}. Check your inbox (and spam folder).`);
   else if (mail?.status === 'failed') req.flash('error', `The email could not be sent: ${mail.error}`);
   else req.flash('info', 'Email sending is not set up yet, so the test email was only recorded below.');
-  res.redirect('/staff/admin/outbox');
+  res.redirect('/admin/outbox');
 });
 
 module.exports = router;
