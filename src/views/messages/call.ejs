@@ -1,0 +1,33 @@
+<%- include('../partials/head', { scripts: [`https://${jitsiDomain}/external_api.js`, '/static/js/consult.js'] }) %>
+<%# A quick call started by the doctor from a conversation. Same video room as appointments (public/js/consult.js). %>
+<% const isDoctor = currentUser.role === 'doctor'; %>
+<% const otherName = isDoctor ? patient.full_name : doctor.full_name; %>
+<% const room = `UHS-call-${call.room_id}`; %>
+<div class="page-head chat-head">
+  <a class="btn btn-light chat-back" href="<%= threadPath %>" aria-label="Back to the conversation"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i><span> Conversation</span></a>
+  <div class="chat-title">
+    <h1><%= call.mode === 'audio' ? 'Audio' : 'Video' %> call with <%= otherName %></h1>
+    <span class="muted">Started <%= t.fmtDateTime(call.started_at) %></span>
+  </div>
+  <div class="chat-actions">
+    <a class="btn btn-light chat-call" href="https://<%= jitsiDomain %>/<%= room %>" target="_blank" rel="noopener" title="Open in a new tab" aria-label="Open the call in a new tab"><i class="fa-solid fa-up-right-from-square" aria-hidden="true"></i><span> New tab</span></a>
+    <% if (isDoctor) { %>
+      <form method="post" action="<%= threadPath %>/call/<%= call.id %>/end" data-confirm="End this call for both of you?">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <button class="btn btn-danger chat-call" type="submit" title="End call" aria-label="End call"><i class="fa-solid fa-phone-slash" aria-hidden="true"></i><span> End call</span></button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<div id="video" class="video-box"
+     data-domain="<%= jitsiDomain %>"
+     data-room="<%= room %>"
+     data-name="<%= callName %>"
+     data-audio-only="<%= call.mode === 'audio' %>">
+  <div class="placeholder"><p>Loading the call…</p></div>
+</div>
+<p class="muted call-note">
+  <i class="fa-solid fa-lock" aria-hidden="true"></i>
+  This room is private to this call. <% if (isDoctor) { %>The patient can rejoin until you end the call.<% } else { %>Not for emergencies: for urgent problems go to the UHS emergency unit.<% } %>
+</p>
+<%- include('../partials/foot') %>

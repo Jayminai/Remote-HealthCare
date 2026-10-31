@@ -1,5 +1,6 @@
 // Signing in and out, patient registration and patient password resets.
-// Patients sign in on the public site (/login); staff sign in to the staff portal (/staff/login).
+// Patients sign in on the public site (/login), doctors and nurses in the staff portal (/staff/login) and
+// administrators in the admin portal (/admin/login).
 const crypto = require('node:crypto');
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -7,7 +8,7 @@ const config = require('../config');
 const db = require('../db');
 const v = require('../utils/validate');
 const t = require('../utils/time');
-const { homeFor, loginPathFor } = require('../middleware/auth');
+const { homeFor, loginPathFor, portalFor, portalOfPath } = require('../middleware/auth');
 const { loginLimiter } = require('../middleware/security');
 const { audit } = require('../services/audit');
 const { sendEmail } = require('../services/notify');
@@ -20,19 +21,28 @@ const RESET_MINUTES = 60;
 const LOGIN_PAGES = {
   public: { view: 'auth/login', title: 'Sign in' },
   staff: { view: 'staff/login', title: 'Staff sign in' },
+  admin: { view: 'staff/login', title: 'Administrator sign in' },
 };
 const renderLogin = (portal) => (req, res, error) =>
   res.render(LOGIN_PAGES[portal].view, { title: LOGIN_PAGES[portal].title, email: req.body?.email || '', error });
 const limiters = {
   public: loginLimiter({ onLimit: renderLogin('public') }),
   staff: loginLimiter({ onLimit: renderLogin('staff') }),
+  admin: loginLimiter({ onLimit: renderLogin('admin') }),
+};
+
+// Shown when someone signs in on another group's page.
+const WRONG_PORTAL = {
+  public: 'This is the patient sign-in. UHS staff sign in through the staff portal, and administrators through the admin portal.',
+  staff: { patient: 'This is the staff portal. Patients sign in on the main UHS Telemedicine website.', admin: 'This is the staff portal. Administrators sign in through the admin portal at /admin/login.' },
+  admin: 'This is the admin portal, for UHS administrators only. Doctors and nurses sign in through the staff portal; patients on the main website.',
 };
 
 /** Start a fresh session for the user (prevents session fixation). Resolves to the page to go to next. */
 async function signIn(req, user) {
   // Only return to a page on the user's own side of the site.
   const returnTo = req.session.returnTo;
-  const sameSide = typeof returnTo === 'string' && returnTo.startsWith('/staff') === (user.role !== 'patient');
+  const sameSide = typeof returnTo === 'string' && portalOfPath(returnTo) === portalFor(user.role);
   await new Promise((resolve, reject) => req.session.regenerate((err) => (err ? reject(err) : resolve())));
   req.session.userId = user.id;
   req.user = user;
@@ -40,7 +50,7 @@ async function signIn(req, user) {
   return sameSide ? v.localPath(returnTo, homeFor(user)) : homeFor(user);
 }
 
-/** Shared sign-in handler. portal: 'public' (patients) or 'staff'. */
+/** Shared sign-in handler. portal: 'public' (patients), 'staff' or 'admin'. */
 function handleLogin(portal) {
   const limiter = limiters[portal];
   const page = LOGIN_PAGES[portal];
@@ -59,12 +69,11 @@ function handleLogin(portal) {
         : 'Incorrect email or password.';
       return res.status(401).render(page.view, { title: page.title, email, error });
     }
-    // Patients and staff each have their own sign-in page.
-    if ((user.role === 'patient') !== (portal === 'public')) {
+    // Patients, staff and administrators each have their own sign-in page.
+    if (portalFor(user.role) !== portal) {
       await audit(req, 'login_wrong_portal', 'user', user.id, { portal });
-      const error = portal === 'public'
-        ? 'This is the patient sign-in. UHS staff sign in through the staff portal.'
-        : 'This is the staff portal. Patients sign in on the main UHS Telemedicine website.';
+      const message = WRONG_PORTAL[portal];
+      const error = typeof message === 'string' ? message : message[user.role] || message.patient;
       return res.status(403).render(page.view, { title: page.title, email, error });
     }
     limiter.reset(req);
@@ -87,8 +96,14 @@ router.get('/staff/login', async (req, res) => {
 });
 router.post('/staff/login', ...handleLogin('staff'));
 
+router.get('/admin/login', async (req, res) => {
+  if (req.user) return res.redirect(homeFor(req.user));
+  res.render('staff/login', { title: 'Administrator sign in', email: '', error: null });
+});
+router.post('/admin/login', ...handleLogin('admin'));
+
 router.post('/logout', async (req, res) => {
-  const portal = req.user && req.user.role !== 'patient' ? 'staff' : 'public';
+  const portal = req.user ? portalFor(req.user.role) : 'public';
   if (req.user) await audit(req, 'logout', 'user', req.user.id);
   req.session.destroy(() => {
     res.clearCookie('uhs.sid');

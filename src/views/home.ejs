@@ -7,8 +7,8 @@
       and keep their medical records safe and easy to find.</p>
     <div class="row">
       <% if (currentUser) { %>
-        <%# Staff who came from the staff portal's "Patient website" link (signed-in patients go to their dashboard). %>
-        <a class="btn btn-accent btn-lg" href="/staff">Back to the staff portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
+        <%# Staff and administrators who came from their portal's "Patient website" link (signed-in patients go to their dashboard). %>
+        <a class="btn btn-accent btn-lg" href="<%= currentUser.role === 'admin' ? '/admin' : '/staff' %>">Back to the <%= currentUser.role === 'admin' ? 'admin' : 'staff' %> portal <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
       <% } else { %>
         <a class="btn btn-accent btn-lg" href="/register">Create a patient account <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
         <a class="btn btn-light btn-lg" href="/login">Sign in</a>

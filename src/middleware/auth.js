@@ -19,9 +19,26 @@ async function loadUser(req, res, next) {
   next();
 }
 
-/** Patients sign in on the public site, staff in the staff portal. */
+// Each role works in one portal with its own address and sign-in page: patients on the public site,
+// doctors and nurses / records officers in the staff portal, administrators in the admin portal.
+const PORTAL_BASES = { public: '', staff: '/staff', admin: '/admin' };
+
+/** The portal a role belongs to. */
+function portalFor(role) {
+  if (role === 'patient') return 'public';
+  return role === 'admin' ? 'admin' : 'staff';
+}
+
+/** The portal an address belongs to ('/admin/users' -> 'admin'). Query strings are allowed. */
+function portalOfPath(path) {
+  if (/^\/admin(\/|\?|$)/.test(path)) return 'admin';
+  if (/^\/staff(\/|\?|$)/.test(path)) return 'staff';
+  return 'public';
+}
+
+/** Each portal has its own sign-in page. */
 function loginPathFor(portal) {
-  return portal === 'staff' ? '/staff/login' : '/login';
+  return `${PORTAL_BASES[portal]}/login`;
 }
 
 /**
@@ -68,7 +85,9 @@ function requireRole(...roles) {
 
 /** Where each role lands after signing in. */
 function homeFor(user) {
-  return { patient: '/patient', doctor: '/staff/doctor', nurse: '/staff/records', admin: '/staff/admin' }[user.role] || '/';
+  return { patient: '/patient', doctor: '/staff/doctor', nurse: '/staff/records', admin: '/admin' }[user.role] || '/';
 }
 
-module.exports = { loadUser, requireAuth, requireRole, homeFor, loginPathFor, isBackground, isPageView };
+module.exports = {
+  loadUser, requireAuth, requireRole, homeFor, loginPathFor, isBackground, isPageView, PORTAL_BASES, portalFor, portalOfPath,
+};

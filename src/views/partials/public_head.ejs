@@ -12,14 +12,17 @@
   const roleNames = { patient: 'Patient', doctor: 'Doctor', nurse: 'Nurse / Records', admin: 'Administrator' };
   const initials = currentUser ? currentUser.full_name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() : '';
   // Signed-in patients already have their main actions in the menu; staff get a way back to their portal.
-  const cta = role && role !== 'patient' ? ['/staff', 'Staff Portal']
+  // Signed-in staff and administrators: their own portal's address.
+  const ownBase = { patient: '', admin: '/admin' }[role] ?? '/staff';
+  const cta = role && role !== 'patient' ? [ownBase, role === 'admin' ? 'Admin Portal' : 'Staff Portal']
     : !role && currentPath !== '/register' ? ['/register', 'Create Account'] : null;
   const wide = typeof fullWidth !== 'undefined' && fullWidth;
 %><!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%# On the messages pages the phone keyboard shrinks the page instead of covering it (see live.js). %>
+  <meta name="viewport" content="width=device-width, initial-scale=1<%= typeof bodyClass !== 'undefined' && bodyClass === 'chat-screen' ? ', interactive-widget=resizes-content' : '' %>">
   <title><%= title %> · UHS Telemedicine</title>
   <link rel="icon" type="image/png" href="/static/img/ui-crest.png">
   <link rel="stylesheet" href="<%= asset('vendor/fontawesome/css/all.min.css') %>">
@@ -30,7 +33,7 @@
   <script src="<%= src.startsWith('/static/') ? asset(src.slice(8)) : src %>" defer></script>
   <% }) %>
 </head>
-<body<% if (typeof bodyClass !== 'undefined') { %> class="<%= bodyClass %>"<% } %><% if (currentUser) { %> data-live="<%= role === 'patient' ? '' : '/staff' %>/live" data-live-since="<%= lastNotificationId %>"<% } %>>
+<body<% if (typeof bodyClass !== 'undefined') { %> class="<%= bodyClass %>"<% } %><% if (currentUser) { %> data-live="<%= ownBase %>/live" data-live-since="<%= lastNotificationId %>"<% } %>>
 <div class="top-info no-print">
   <div class="wrap">
     <div>
@@ -52,19 +55,29 @@
         <a href="<%= href %>" class="<%= isActive(href) ? 'active' : '' %>"><% if (icon) { %><i class="<%= icon %> nav-icon" aria-hidden="true"></i><% } %><%= label %><% if (badge) { %><span class="pill" data-badge="<%= badge %>" <%= unreadMessages ? '' : 'hidden' %>><%= unreadMessages %></span><% } %></a>
       <% }) %>
       <% if (cta) { %><a class="nav-cta" href="<%= cta[0] %>"><%= cta[1] %></a><% } %>
+      <% if (currentUser) { %>
+        <%# Phones only: the account links live in this menu instead of the header (see .nav-account in style.css). %>
+        <div class="nav-account">
+          <a href="<%= ownBase %>/account/profile" class="<%= currentPath === '/account/profile' ? 'active' : '' %>"><i class="fa-regular fa-circle-user nav-icon" aria-hidden="true"></i>My profile</a>
+          <form method="post" action="/logout">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <button type="submit" class="nav-signout"><i class="fa-solid fa-arrow-right-from-bracket nav-icon" aria-hidden="true"></i>Sign out</button>
+          </form>
+        </div>
+      <% } %>
     </nav>
     <div class="header-actions">
       <% if (currentUser) { %>
-        <a href="<%= role === 'patient' ? '/notifications' : '/staff/notifications' %>" class="icon-link <%= currentPath === '/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
+        <a href="<%= ownBase %>/notifications" class="icon-link <%= currentPath === '/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
           <i class="fa-regular fa-bell" aria-hidden="true"></i><span class="pill" data-badge="notifications" <%= unreadNotifications ? '' : 'hidden' %>><%= unreadNotifications %></span>
         </a>
         <div class="user-box">
           <span class="avatar" aria-hidden="true"><%= initials %></span>
           <span class="user-meta">
-            <a href="<%= role === 'patient' ? '/account/profile' : '/staff/account/password' %>"><%= currentUser.full_name %></a>
+            <a href="<%= ownBase %>/account/profile"><%= currentUser.full_name %></a>
             <small><%= roleNames[role] %></small>
           </span>
-          <form method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="signout" type="submit" title="Sign out" aria-label="Sign out"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></form>
+          <form class="header-signout" method="post" action="/logout"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="signout" type="submit" title="Sign out" aria-label="Sign out"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></button></form>
         </div>
       <% } %>
       <% if (cta) { %><a class="header-cta" href="<%= cta[0] %>"><%= cta[1] %> <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a><% } %>

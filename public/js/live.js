@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const visible = () => document.visibilityState === 'visible';
   const liveHeaders = { 'X-Live': '1', Accept: 'application/json' };
-  const loginPath = body.dataset.live.startsWith('/staff/') ? '/staff/login' : '/login';
+  const loginPath = body.dataset.live.replace(/\/live$/, '/login'); // '/live' -> '/login', '/admin/live' -> '/admin/login'
 
   /** Did the server answer that the session has ended (idle timeout, signed out elsewhere)? */
   const isSignedOut = (res) => res.status === 401 || (res.redirected && new URL(res.url).pathname === loginPath);
@@ -138,6 +138,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
   }
 
+  // Whether the newest message is in view, kept up to date as the user scrolls. When the conversation changes
+  // size (a photo finishes loading, the keyboard opens) it then stays on the newest message, unless the user
+  // had scrolled up to read older ones.
+  let pinned = true;
+  const keepPinned = thread && window.ResizeObserver
+    ? new ResizeObserver(() => { if (pinned) thread.scrollTop = thread.scrollHeight; })
+    : null;
+  if (thread) {
+    // Only scrolling up means the user left the newest message; content growing above (photos loading)
+    // also fires scroll events but does not move the position up.
+    let lastTop = thread.scrollTop;
+    thread.addEventListener('scroll', () => {
+      if (thread.scrollTop < lastTop - 2) pinned = nearBottom();
+      else if (nearBottom()) pinned = true;
+      lastTop = thread.scrollTop;
+    }, { passive: true });
+    thread.scrollTop = thread.scrollHeight;
+    if (keepPinned) {
+      keepPinned.observe(thread);
+      thread.querySelectorAll('.msg-photo img').forEach((img) => keepPinned.observe(img));
+    }
+  }
+
   function addMessage(m) {
     if (thread.querySelector(`.msg[data-id="${m.id}"]`)) return false;
     const empty = thread.querySelector('[data-thread-empty]');
@@ -153,9 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
       link.rel = 'noopener';
       const img = document.createElement('img');
       img.alt = 'Photo';
-      // The photo arrives after the message is placed; keep the newest message in view.
-      const stick = m.mine || nearBottom();
-      img.addEventListener('load', () => { if (stick) thread.scrollTop = thread.scrollHeight; });
+      if (m.mine) pinned = true; // the user's own photo: show it once it has loaded
+      if (keepPinned) keepPinned.observe(img); // it takes its height only once loaded
       img.src = m.image;
       link.appendChild(img);
       el.appendChild(link);
@@ -201,7 +223,22 @@ document.addEventListener('DOMContentLoaded', () => {
     showReadUpTo(t.lastReadId);
     const typing = document.querySelector('[data-typing]');
     if (typing) typing.hidden = !t.typing;
+    showCall(t.call);
     if (added && stick) thread.scrollTop = thread.scrollHeight;
+  }
+
+  /** The banner for a call the doctor started: Join (patient) or Rejoin / End (doctor); hidden once it ends. */
+  function showCall(call) {
+    const banner = document.querySelector('[data-call-banner]');
+    if (!banner) return;
+    banner.hidden = !call;
+    if (!call) return;
+    banner.querySelector('[data-call-text]').textContent = call.label;
+    const join = banner.querySelector('[data-call-join]');
+    join.href = call.url;
+    join.querySelector('i').className = `fa-solid ${call.mode === 'audio' ? 'fa-phone' : 'fa-video'}`;
+    const end = banner.querySelector('[data-call-end]');
+    if (end) end.action = call.endUrl;
   }
 
   // Typing indicator: tell the server while the user types, and once when they stop.
@@ -272,17 +309,20 @@ document.addEventListener('DOMContentLoaded', () => {
       textarea.required = !photo; // a photo may be sent without text
       toBottom();
     };
+    // Any kind of picture can be chosen: whatever the browser can open itself (JPEG, PNG, GIF, WebP, AVIF, BMP,
+    // SVG, and HEIC/TIFF in Safari), plus HEIC/HEIF (iPhone and many Android cameras) and TIFF through decoders
+    // in public/vendor that are only downloaded when needed. Every picture is sent as a smaller JPEG.
     async function shrink(file) {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      const picture = await openPicture(file);
+      const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(picture.width, picture.height));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
+      canvas.width = Math.max(1, Math.round(picture.width * scale));
+      canvas.height = Math.max(1, Math.round(picture.height * scale));
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#fff'; // transparent areas would otherwise turn black in a JPEG
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
+      ctx.drawImage(picture.source, 0, 0, canvas.width, canvas.height);
+      if (picture.source.close) picture.source.close();
       return canvas.toDataURL('image/jpeg', 0.82);
     }
     if (photoButton && photoInput && preview) {
@@ -293,12 +333,15 @@ document.addEventListener('DOMContentLoaded', () => {
         photoInput.value = '';
         if (!file) return;
         showError('');
-        if (!file.type.startsWith('image/')) return showError('Please choose a photo.');
+        if (!looksLikePicture(file)) return showError('Please choose a picture.');
+        photoButton.classList.add('is-loading', 'is-loading-icon'); // opening a large HEIC can take a moment
         try {
           setPhoto(await shrink(file));
           textarea.focus();
         } catch {
-          showError('This photo could not be opened. Try a JPEG or PNG picture.');
+          showError('This picture could not be opened. It may be damaged, or in a format this browser cannot read.');
+        } finally {
+          photoButton.classList.remove('is-loading', 'is-loading-icon');
         }
       });
       form.querySelector('[data-photo-remove]').addEventListener('click', () => setPhoto(null));
@@ -336,6 +379,114 @@ document.addEventListener('DOMContentLoaded', () => {
         textarea.focus();
       }
     });
+  }
+
+  // ---- Opening pictures (for photos in messages) ----
+
+  const PICTURE_NAME = /\.(jpe?g|jfif|pjpeg|png|apng|gif|webp|avif|bmp|dib|ico|svg|heic|heif|hif|tiff?)$/i;
+  const looksLikePicture = (file) => file.type.startsWith('image/') || PICTURE_NAME.test(file.name);
+
+  /** What the first bytes say the file is (names and types are often missing for HEIC on Windows). */
+  function sniff(bytes) {
+    const text = (from, to) => String.fromCharCode(...bytes.subarray(from, to));
+    if (text(4, 8) === 'ftyp' && /^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(text(8, 12))) return 'heic';
+    if ((text(0, 2) === 'II' && bytes[2] === 42) || (text(0, 2) === 'MM' && bytes[3] === 42)) return 'tiff';
+    return null;
+  }
+
+  const scripts = {};
+  /** Load one of the decoders in public/vendor, once. */
+  function loadScript(src) {
+    scripts[src] ??= new Promise((resolve, reject) => {
+      const el = document.createElement('script');
+      el.src = src;
+      el.onload = resolve;
+      el.onerror = () => { delete scripts[src]; reject(new Error(`Could not load ${src}`)); };
+      document.head.appendChild(el);
+    });
+    return scripts[src];
+  }
+
+  /** Raw pixels on a canvas, ready to draw. */
+  function pixelsToCanvas(data, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').putImageData(new ImageData(data, width, height), 0, 0);
+    return { source: canvas, width, height };
+  }
+
+  async function openHeic(bytes) {
+    await loadScript('/static/vendor/libheif/libheif.js');
+    let lib = window.libheif();
+    if (lib && typeof lib.then === 'function') lib = await lib;
+    if (lib && lib.ready) await lib.ready;
+    const [image] = new lib.HeifDecoder().decode(bytes);
+    if (!image) throw new Error('No picture in this HEIC file');
+    const width = image.get_width();
+    const height = image.get_height();
+    const target = { data: new Uint8ClampedArray(width * height * 4), width, height };
+    await new Promise((resolve, reject) => {
+      image.display(target, (shown) => (shown ? resolve() : reject(new Error('HEIC decoding failed'))));
+    });
+    if (image.free) image.free();
+    return pixelsToCanvas(target.data, width, height);
+  }
+
+  async function openTiff(bytes) {
+    await loadScript('/static/vendor/pako/pako_inflate.min.js'); // UTIF uses it for compressed TIFFs
+    await loadScript('/static/vendor/utif/UTIF.js');
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    const [page] = window.UTIF.decode(buffer);
+    if (!page) throw new Error('No picture in this TIFF file');
+    window.UTIF.decodeImage(buffer, page);
+    return pixelsToCanvas(new Uint8ClampedArray(window.UTIF.toRGBA8(page)), page.width, page.height);
+  }
+
+  /** Something drawable for any picture file the browser or the decoders can read. */
+  async function openPicture(file) {
+    try {
+      const bitmap = await createImageBitmap(file);
+      return { source: bitmap, width: bitmap.width, height: bitmap.height };
+    } catch { /* not a format this browser opens directly; try the other ways */ }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const kind = sniff(bytes) || (/\.(heic|heif|hif)$/i.test(file.name) ? 'heic' : /\.tiff?$/i.test(file.name) ? 'tiff' : null);
+    if (kind === 'heic') return openHeic(bytes);
+    if (kind === 'tiff') return openTiff(bytes);
+    // Some formats (e.g. SVG) open as an image element but not as a bitmap.
+    const img = new Image();
+    img.src = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    await img.decode();
+    return { source: img, width: img.naturalWidth || 1200, height: img.naturalHeight || 1200 };
+  }
+
+  // ---- Phone keyboard ----
+  // On the messages pages the screen is sized to the area above the keyboard, so opening it shrinks the
+  // conversation instead of covering it or pushing the header off screen, and the newest message stays just
+  // above the message box (as in WhatsApp). Android Chrome also resizes the page itself (the viewport meta tag);
+  // this covers iPhones and other browsers.
+  if (body.classList.contains('chat-screen') && window.visualViewport) {
+    const vv = window.visualViewport;
+    const fitScreen = () => {
+      document.documentElement.style.setProperty('--app-height', `${Math.round(vv.height)}px`);
+      window.scrollTo(0, 0); // iOS scrolls the page to show the focused box; the layout already does
+      if (thread && pinned) thread.scrollTop = thread.scrollHeight;
+    };
+    vv.addEventListener('resize', fitScreen);
+    window.addEventListener('resize', fitScreen); // Android, where the keyboard resizes the window itself
+    vv.addEventListener('scroll', () => { if (window.scrollY) window.scrollTo(0, 0); });
+    window.addEventListener('load', fitScreen); // after fonts and photos have taken their space
+    fitScreen();
+    // While typing, small extras give their room to the conversation (.composing in style.css).
+    if (textarea) {
+      textarea.addEventListener('focus', () => body.classList.add('composing'));
+      textarea.addEventListener('blur', () => body.classList.remove('composing'));
+    }
   }
 
   // ---- Polling ----

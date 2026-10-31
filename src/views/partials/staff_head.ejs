@@ -1,6 +1,7 @@
 <%
-  // Staff portal layout: sidebar menu for doctors, nurses / records officers and administrators.
+  // Staff and admin portal layout: sidebar menu for doctors, nurses / records officers (/staff) and administrators (/admin).
   const role = currentUser ? currentUser.role : null;
+  const portalName = portal === 'admin' ? 'Admin Portal' : 'Staff Portal';
   const menus = {
     doctor: [
       ['Workspace', [['/staff/doctor', 'My queue', 'fa-solid fa-list-check'], ['/staff/doctor/patients', 'Patients', 'fa-solid fa-users'], ['/staff/messages', 'Messages', 'fa-regular fa-comments', 'messages']]],
@@ -9,13 +10,14 @@
       ['Records office', [['/staff/records', "Today's queue", 'fa-solid fa-list-check'], ['/staff/records/patients', 'Find a patient', 'fa-solid fa-magnifying-glass'], ['/staff/records/patients/new', 'Register patient', 'fa-solid fa-user-plus']]],
     ],
     admin: [
-      ['Administration', [['/staff/admin', 'Service dashboard', 'fa-solid fa-chart-column'], ['/staff/admin/users', 'Staff accounts', 'fa-solid fa-users-gear'], ['/staff/admin/audit', 'Audit log', 'fa-solid fa-clipboard-list'], ['/staff/admin/outbox', 'Email outbox', 'fa-regular fa-envelope']]],
+      ['Administration', [['/admin', 'Service dashboard', 'fa-solid fa-chart-column'], ['/admin/users', 'Staff accounts', 'fa-solid fa-users-gear'], ['/admin/audit', 'Audit log', 'fa-solid fa-clipboard-list'], ['/admin/outbox', 'Email outbox', 'fa-regular fa-envelope']]],
     ],
   }[role] || [];
   if (role) {
     menus.push(['Account', [
-      ['/staff/notifications', 'Notifications', 'fa-regular fa-bell', 'notifications'],
-      ['/staff/account/password', 'Change password', 'fa-solid fa-key'],
+      [`${base}/notifications`, 'Notifications', 'fa-regular fa-bell', 'notifications'],
+      [`${base}/account/profile`, 'My profile', 'fa-regular fa-circle-user'],
+      [`${base}/account/password`, 'Change password', 'fa-solid fa-key'],
     ]]);
   }
   // The active link is the longest one that matches the current path.
@@ -28,9 +30,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <%# On the messages pages the phone keyboard shrinks the page instead of covering it (see live.js). %>
+  <meta name="viewport" content="width=device-width, initial-scale=1<%= typeof bodyClass !== 'undefined' && bodyClass === 'chat-screen' ? ', interactive-widget=resizes-content' : '' %>">
   <meta name="robots" content="noindex">
-  <title><%= title %> · UHS Staff Portal</title>
+  <title><%= title %> · UHS <%= portalName %></title>
   <link rel="icon" type="image/png" href="/static/img/ui-crest.png">
   <link rel="stylesheet" href="<%= asset('vendor/fontawesome/css/all.min.css') %>">
   <link rel="stylesheet" href="<%= asset('css/style.css') %>">
@@ -40,15 +43,15 @@
   <script src="<%= src.startsWith('/static/') ? asset(src.slice(8)) : src %>" defer></script>
   <% }) %>
 </head>
-<body class="staff-body <%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>"<% if (currentUser) { %> data-live="/staff/live" data-live-since="<%= lastNotificationId %>"<% } %>>
+<body class="staff-body <%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>"<% if (currentUser) { %> data-live="<%= base %>/live" data-live-since="<%= lastNotificationId %>"<% } %>>
 <% if (!currentUser) { %>
 <main class="staff-auth">
 <% } else { %>
 <div class="staff-shell" data-staff-shell>
   <aside class="staff-sidebar" id="staff-sidebar" aria-label="Staff menu">
-    <a class="staff-brand" href="/staff">
+    <a class="staff-brand" href="<%= base %>">
       <img src="/static/img/ui-crest.png" alt="" width="42" height="42">
-      <span><strong>UHS Staff Portal</strong><small>Telemedicine</small></span>
+      <span><strong>UHS <%= portalName %></strong><small>Telemedicine</small></span>
     </a>
     <nav class="staff-nav">
       <% menus.forEach(([heading, items]) => { %>
@@ -74,13 +77,25 @@
       <button class="staff-menu-btn" type="button" aria-label="Open menu" aria-controls="staff-sidebar" aria-expanded="false" data-staff-toggle><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
       <div class="staff-topbar-title"><%= roleNames[role] %> workspace</div>
       <div class="staff-topbar-actions">
-        <a href="/staff/notifications" class="icon-link <%= currentPath === '/staff/notifications' ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
+        <a href="<%= base %>/notifications" class="icon-link <%= currentPath === `${base}/notifications` ? 'active' : '' %>" title="Notifications" aria-label="Notifications<%= unreadNotifications ? ` (${unreadNotifications} unread)` : '' %>">
           <i class="fa-regular fa-bell" aria-hidden="true"></i><span class="pill" data-badge="notifications" <%= unreadNotifications ? '' : 'hidden' %>><%= unreadNotifications %></span>
         </a>
-        <a class="staff-user" href="/staff/account/password" title="Account">
-          <span class="avatar" aria-hidden="true"><%= initials %></span>
-          <span class="user-meta"><strong><%= currentUser.full_name %></strong><small><%= roleNames[role] %></small></span>
-        </a>
+        <%# Desktop: opens the profile page. Phones: opens this menu, so signing out is one tap away (app.js). %>
+        <div class="staff-user-menu" data-user-menu>
+          <a class="staff-user" href="<%= base %>/account/profile" title="My profile" aria-haspopup="menu" aria-expanded="false" data-user-menu-toggle>
+            <span class="avatar" aria-hidden="true"><%= initials %></span>
+            <span class="user-meta"><strong><%= currentUser.full_name %></strong><small><%= roleNames[role] %></small></span>
+          </a>
+          <div class="user-dropdown" role="menu" data-user-menu-panel hidden>
+            <div class="user-dropdown-head"><strong><%= currentUser.full_name %></strong><small><%= roleNames[role] %></small></div>
+            <a role="menuitem" href="<%= base %>/account/profile"><i class="fa-regular fa-circle-user" aria-hidden="true"></i> Profile</a>
+            <a role="menuitem" href="<%= base %>/account/password"><i class="fa-solid fa-gear" aria-hidden="true"></i> Settings</a>
+            <form method="post" action="/logout">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <button type="submit" role="menuitem" class="user-dropdown-signout"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i> Sign out</button>
+            </form>
+          </div>
+        </div>
       </div>
     </header>
     <main class="staff-content">

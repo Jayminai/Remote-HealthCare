@@ -17,7 +17,7 @@ function serviceNumbers() {
 }
 
 router.get('/', async (req, res) => {
-  // Signed-in patients start on their dashboard. Staff see the public home page: the staff portal's
+  // Signed-in patients start on their dashboard. Staff and administrators see the public home page: their portal's
   // "Patient website" link brings them here.
   if (req.user?.role === 'patient') return res.redirect(homeFor(req.user));
   res.render('home', { title: 'Welcome', numbers: await serviceNumbers(), faqs: HOME_FAQS });

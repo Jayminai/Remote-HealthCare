@@ -14,7 +14,7 @@ Online booking · Video & audio consultations · Electronic medical records · R
 [![EJS](https://img.shields.io/badge/Views-EJS-B4CA65?logo=ejs&logoColor=black)](https://ejs.co)
 [![Jitsi Meet](https://img.shields.io/badge/Video-Jitsi%20Meet-1D76BA?logo=jitsi&logoColor=white)](https://jitsi.org/meet)
 [![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](#%EF%B8%8F-deploying-to-vercel)
-[![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-24%20passing-brightgreen?logo=checkmarx&logoColor=white)](#-testing)
 [![NDPA 2023](https://img.shields.io/badge/Privacy-NDPA%202023-0b5cad)](#-security-and-privacy)
 
 [**Quick start**](#-quick-start) · [**Deploy**](#%EF%B8%8F-deploying-to-vercel) · [**Demo accounts**](#-demo-accounts) · [**Screenshots**](#-screenshots) · [**Architecture**](#-system-design) · [**Security**](#-security-and-privacy)
@@ -132,9 +132,9 @@ Each requirement from the interview maps to something you can see in the applica
 ### 🔐 Staff portal
 
 <p align="center">
-  <img src="docs/media/staff-login.png" alt="Staff portal sign-in page for doctors, nurses and administrators" width="49%">
+  <img src="docs/media/staff-login.png" alt="Staff portal sign-in page" width="49%">
 </p>
-<p align="center"><sub>Doctors, nurses and administrators sign in at <code>/staff/login</code>, separately from patients.</sub></p>
+<p align="center"><sub>Doctors, nurses and records officers sign in at <code>/staff/login</code>, administrators at <code>/admin/login</code>, separately from patients. (Screenshot taken before the admin portal was split out.)</sub></p>
 
 ### 👩‍🎓 Patient
 
@@ -180,7 +180,12 @@ Each requirement from the interview maps to something you can see in the applica
 
 The layout is mobile first. On a phone, tables turn into one small card per row (each value under its column name),
 so nothing has to be scrolled sideways; the patient's appointments show as cards with an icon per line. Notifications
-and conversations are tapped to open, and the messages pages stay fixed on screen like a messaging app.
+and conversations are tapped to open, and the messages pages stay fixed on screen like a messaging app: when the
+keyboard opens, the conversation shrinks to fit above it and the newest message stays in view.
+
+On phones, signing out is in the menu: patients find **Sign out** (and **My profile**) in the menu button, and staff
+tap their initials for **Profile**, **Settings** and **Sign out**. On wider screens, the staff profile button opens
+the profile page.
 
 Icons (Font Awesome, bundled locally) mark headings, buttons, figures, statuses and messages throughout. A few move
 to draw attention to something live: the bell rings when a notification arrives, a call you can join pulses, and
@@ -205,9 +210,10 @@ motion.
 - Secure messages with doctors they have seen; in-app and email notifications.
 - Live updates without reloading: new messages, "typing…", read receipts, notification pop-ups and unread counters.
 - Tapping a notification goes straight to what it is about (the appointment, the consultation in the record, or the conversation). Opening that page any other way also clears the notification.
+- Join a video or audio call the doctor starts from the conversation (patients cannot start one).
 - Unread notifications are tinted with a **New** tag, and conversations with unread messages are tinted with the unread count; both clear as soon as they are opened.
 - Messages work like a chat app: a list of conversations with the latest message and unread count, and a full-screen conversation where only the messages scroll and the message box stays at the bottom.
-- Photos in messages, e.g. to show the doctor a medicine bought at the pharmacy. Photos are shrunk in the browser before sending.
+- Photos in messages, e.g. to show the doctor a medicine bought at the pharmacy. Any picture can be sent (JPEG, PNG, GIF, WebP, AVIF, BMP, SVG, TIFF and HEIC/HEIF from iPhones and many Android phones); the browser converts it to a smaller JPEG before sending.
 - Confirm their email address after registering (a link valid for 24 hours, with "send a new link" and "change address" options) before booking.
 - Forgot password: a one-time reset link by email, valid for 1 hour.
 - Update contact and emergency contact details.
@@ -221,6 +227,7 @@ motion.
 - Consultation notes (complaint, history, examination, diagnosis, plan), structured prescriptions, follow-up date and message.
 - Patient search and full record view (including history captured from paper files).
 - Secure messaging with patients, with the same live updates and photos as patients get (e.g. a picture of the medicine to buy).
+- **Quick calls:** once a conversation has started, a video or audio call with the patient is one tap away from the conversation. The patient is told at once (a pop-up and a "calling you · Join" banner in the conversation) and joins the private room; the doctor ends the call. Patients cannot start calls.
 - The queue refreshes itself when a notification arrives (new booking, patient checked in or cancelled); notifications open the queue for that day at the appointment.
 </details>
 
@@ -235,11 +242,15 @@ motion.
 - Cannot see consultation notes or prescriptions (need-to-know principle).
 </details>
 
+All staff have a **My profile** page with their account details, where they can update their phone number (name,
+email and role are set by an administrator).
+
 <details open>
 <summary><b>Administrator</b></summary>
 
 - Service dashboard (7/30/90 days).
-- Create staff accounts (doctor, nurse, admin) with temporary passwords; the new staff member is emailed the staff portal address. Activate/deactivate accounts; reset passwords.
+- Works in the **admin portal** at `/admin` (sign in at `/admin/login`), separate from the staff portal.
+- Create staff accounts (doctor, nurse, admin) with temporary passwords; the new staff member is emailed the sign-in address of their portal. Activate/deactivate accounts; reset passwords.
 - Audit log of sign-ins, record views and changes; email outbox with a **Send me a test email** button.
 - Cannot see clinical records.
 </details>
@@ -270,7 +281,10 @@ motion.
 | Email | `nodemailer` | Works with any SMTP provider. Without SMTP, emails are saved to an outbox for demonstrations. |
 | Tests | Node's built-in test runner (`node:test`) | No extra test framework needed. |
 
-There are no front-end frameworks or CDNs apart from Jitsi; all CSS and JavaScript is local.
+There are no front-end frameworks or CDNs apart from Jitsi; all CSS and JavaScript is local. To open photo formats
+that browsers cannot (HEIC in Chrome and Firefox, TIFF), `public/vendor` includes [libheif-js](https://github.com/catdad-experiments/libheif-js)
+(LGPL-3.0), [UTIF.js](https://github.com/photopea/UTIF.js) (MIT) and [pako](https://github.com/nodeca/pako) (MIT),
+each with its license; the browser only downloads them when such a photo is chosen.
 
 ---
 
@@ -322,16 +336,17 @@ After `npm run seed`:
 
 | Role | Sign in at | Email | Password |
 |---|---|---|---|
-| 🛡️ Administrator | `/staff/login` | `admin@uhs.ui.edu.ng` | `Admin@1234` |
+| 🛡️ Administrator | `/admin/login` | `admin@uhs.ui.edu.ng` | `Admin@1234` |
 | 🩺 Doctor | `/staff/login` | `dr.adebayo@uhs.ui.edu.ng` (also `dr.okafor@…`, `dr.bello@…`) | `Doctor@1234` |
 | 🗂️ Nurse / Records | `/staff/login` | `nurse.ojo@uhs.ui.edu.ng` | `Nurse@1234` |
 | 👩‍🎓 Patient | `/login` | `tolulope.adeyemi@stu.ui.edu.ng` (also `emeka.nwosu@stu.ui.edu.ng`) | `Patient@1234` |
 
 > [!NOTE]
-> **Two separate entrances.** Patients use the public website and sign in at `/login` (and register themselves at
-> `/register`). Doctors, nurses and administrators use the **staff portal** at `/staff/login`, which has its own
-> dashboard layout. Staff accounts are created by an administrator in **Staff accounts**. Signing in on the wrong
-> page is refused, and every staff page lives under `/staff/...`.
+> **Three separate entrances.** Patients use the public website and sign in at `/login` (and register themselves at
+> `/register`). Doctors, nurses and records officers use the **staff portal** at `/staff/login`, and administrators
+> the **admin portal** at `/admin/login`; both have a sidebar dashboard layout. Staff accounts are created by an
+> administrator in **Staff accounts**. Signing in on another group's page is refused, staff pages live under
+> `/staff/...` and admin pages under `/admin/...`. Old `/staff/admin/...` links redirect to `/admin/...`.
 
 The seed creates 3 doctors, 1 nurse, 1 admin and 50 patients (some with paper files only and no online account).
 It also creates about 30 days of appointment history with a morning peak, today's queue, upcoming bookings and a
@@ -348,7 +363,7 @@ sample message thread.
 4. **Digitising a paper file.** On a patient with an old file number, add a history entry (e.g. a 2022 malaria episode) and click *Mark paper file as fully digitised*.
 5. **Doctor consultation.** Sign in as a doctor → **My queue** → *Start* (or *Start call* for a remote appointment) → fill in the notes, add a prescription and a follow-up message → *Save and complete*.
 6. **Patient follows up.** As the patient, open **My record** to see the diagnosis and print the prescription. Open **Messages** to read and reply to the doctor's follow-up. With the doctor signed in to the same conversation in another browser, each side sees the other typing and the replies arrive without reloading.
-7. **Management view.** Sign in as admin → **Dashboard** (peak hours, average wait in person vs remote, remote share, no-show rate) → **Audit log**.
+7. **Management view.** Sign in as admin at `/admin/login` → **Dashboard** (peak hours, average wait in person vs remote, remote share, no-show rate) → **Audit log**.
 
 > [!TIP]
 > To test a live video call, book a remote appointment for **today** within the next 15 minutes (or use one from
@@ -487,7 +502,7 @@ Signed-in pages update themselves without reloading ([public/js/live.js](public/
 
 | What | How |
 |---|---|
-| Unread counters, notification pop-ups | Every page asks `/live` (staff: `/staff/live`) every 5 seconds for the counters and any notifications created since the page loaded. |
+| Unread counters, notification pop-ups | Every page asks `/live` (staff: `/staff/live`, administrators: `/admin/live`) every 5 seconds for the counters and any notifications created since the page loaded. |
 | Lists (notifications, conversations, the doctor's queue, the patient's appointments) | When something changes, the list is fetched again and replaced in place. |
 | Open conversation | Asks `/messages/<patient>/<doctor>/updates` every 2.5 seconds for new messages, read receipts and whether the other person is typing. Sending posts the form in the background. |
 | Background tabs | Ask every 30 seconds, and catch up at once when shown again. A conversation is only marked read while it is on screen. |
@@ -577,6 +592,7 @@ erDiagram
 | `record_entries` | History copied from paper files or reported by the patient/other hospitals. |
 | `messages` | Secure patient–doctor messages. |
 | `message_images` | Photos sent in messages. Stored in the database because serverless hosting keeps no files; only the two people in the conversation can open them. |
+| `quick_calls` | Video or audio calls a doctor starts from a conversation: private room id, start and end time. A call left open counts as over after an hour. |
 | `typing` | Who is typing in which conversation, for the live "typing…" indicator (entries older than a few seconds are ignored). |
 | `notifications` | In-app notifications, each with a link to what it is about. |
 | `reminders_sent` | Prevents sending the same reminder twice. |
@@ -607,9 +623,9 @@ Health information is sensitive personal data under the **Nigeria Data Protectio
 | Forms | **CSRF tokens** on every form. |
 | Browser | **Content Security Policy** and other security headers. No inline scripts; only the Jitsi domain may load scripts or frames. Pages are sent with `Cache-Control: no-store`. |
 | Injection / redirects | Parameterised SQL everywhere; redirects only to local paths. |
-| Call privacy | 24 random hex characters per appointment room, never reused. |
+| Call privacy | 24 random hex characters per appointment room and per quick call, never reused. Only the doctor can start a quick call, and only the patient and doctor of that conversation can open it. |
 | Email | Message emails say only that a message exists; the content stays in the system. |
-| Photos | Only JPEG, PNG, WebP or GIF pictures whose content matches their type are accepted (up to 2.5 MB after the browser shrinks them), and they are served only to the patient and doctor in that conversation. |
+| Photos | Whatever the format chosen, the browser converts it to a JPEG; the server accepts only JPEG, PNG, WebP or GIF whose content matches its type (up to 2.5 MB), and serves photos only to the patient and doctor in that conversation. |
 | Email ownership | Patients who register themselves must open a link sent to their email before they can use the service. Accounts created by staff, and accounts that existed before this check, count as confirmed. |
 | Identity | A self-registration matching an existing record is refused and sent to the records office, so no one can claim another person's file online. |
 
@@ -627,23 +643,24 @@ npm test
 ```
 
 ```
-ℹ tests 23
-ℹ pass 23
+ℹ tests 24
+ℹ pass 24
 ℹ fail 0
 ```
 
-23 automated tests run against a temporary database file that is deleted afterwards:
+24 automated tests run against a temporary database file that is deleted afterwards:
 
 - **Unit tests** ([tests/unit.test.js](tests/unit.test.js)): date handling, UHS number generation, duplicate detection (reordered names, phone formats, ID numbers), form validation, slot generation, least-busy doctor assignment, double-booking prevention (application and database level), reminders sent exactly once, safe redirects, password policy, doctor titles, transactions (rollback and nested calls).
 - **End-to-end HTTP tests** ([tests/http.test.js](tests/http.test.js)):
   - The full patient journey: register → confirm email → duplicate registration blocked → book → doctor starts and completes the consultation with a prescription → patient sees the record, prescription, follow-up message and notification → patient replies → another patient cannot read the thread.
   - Records office: registration with duplicate warning/override, walk-in, vitals (out-of-range values refused), nurse cannot see clinical notes, enabling online access with forced password change.
   - Admin: dashboard, user creation (welcome email without the password) and deactivation, test email, no access to clinical records.
-  - Separate entrances: staff are refused on the patient sign-in page and patients on the staff portal; old staff addresses redirect to `/staff`; the staff portal's "Patient website" link opens the public home page.
+  - Separate entrances: staff are refused on the patient sign-in page, patients on the staff portal, administrators on the staff portal and doctors on the admin portal; a doctor opening an admin page is sent back to the staff portal; old staff addresses redirect to `/staff` and old `/staff/admin` addresses to `/admin`; the staff portal's "Patient website" link opens the public home page.
   - Email confirmation: self-registered patients are held on "confirm your email" (pages, messages and the booking API), the link is hidden from the outbox, only the newest link works, links expire, a mistyped address can be corrected, the link works on another device, and resending is limited.
   - Password reset: same answer for patients, staff and unknown emails; reset links hidden from the outbox; links work once, expire, and sign the account out elsewhere.
-  - Notifications and live updates: opening a notification leads to the appointment itself; opening the page directly also clears the notification; new notifications and counters reach the page; a conversation shows "typing…", new messages and read receipts, and messages stay unread until the conversation is on screen; photos can be sent and opened only by the two people in the conversation, and files that are not real pictures are refused; signed-out requests get a 401 instead of the sign-in page.
+  - Notifications and live updates: opening a notification leads to the appointment itself; opening the page directly also clears the notification; new notifications and counters reach the page; a conversation shows "typing…", new messages and read receipts, and messages stay unread until the conversation is on screen; photos can be sent and opened only by the two people in the conversation, and files that are not real pictures are refused; only the doctor can start (or end) a quick call, only once the conversation has begun, and the patient is notified and can join it until it ends; signed-out requests get a 401 instead of the sign-in page.
   - Idle timeout: background live updates do not keep an idle user signed in.
+  - Staff profile: staff see their own details and can update their phone number; the header's profile button links to it.
   - Security: CSRF rejection, failed-login auditing, access control redirects.
 
 ---
@@ -682,7 +699,8 @@ Remote-HealthCare/
 │   └── views/               # EJS templates per area + shared partials
 ├── public/
 │   ├── css/style.css
-│   └── js/                  # app.js, booking.js (slot picker), consult.js (video + prescription rows), live.js (live updates)
+│   ├── js/                  # app.js, booking.js (slot picker), consult.js (video + prescription rows), live.js (live updates)
+│   └── vendor/              # Font Awesome, Outfit font, and photo decoders (libheif, UTIF, pako)
 ├── api/index.js             # Vercel serverless entry point
 ├── docs/
 │   ├── images/              # University of Ibadan logo

@@ -59,6 +59,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const thread = document.querySelector('.thread');
   if (thread) thread.scrollTop = thread.scrollHeight;
 
+  // Staff profile button: on wide screens it opens the profile page; on phones and tablets (where the sidebar,
+  // with its sign-out button, is tucked away) it opens a menu with Profile, Settings and Sign out.
+  const userMenu = document.querySelector('[data-user-menu]');
+  if (userMenu) {
+    const toggle = userMenu.querySelector('[data-user-menu-toggle]');
+    const panel = userMenu.querySelector('[data-user-menu-panel]');
+    const compact = window.matchMedia('(max-width: 960px)');
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+    };
+    toggle.addEventListener('click', (e) => {
+      if (!compact.matches) return; // follow the link
+      e.preventDefault();
+      setOpen(panel.hidden);
+    });
+    document.addEventListener('click', (e) => { if (!userMenu.contains(e.target)) setOpen(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setOpen(false); });
+    compact.addEventListener('change', () => setOpen(false));
+  }
+
   // Collapsible main menu on small screens.
   const header = document.querySelector('[data-header]');
   const navToggle = document.querySelector('[data-nav-toggle]');

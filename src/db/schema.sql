@@ -153,6 +153,21 @@ CREATE TABLE IF NOT EXISTS message_images (
   created_at   TEXT NOT NULL
 );
 
+-- A quick video or audio call a doctor starts from a conversation with a patient. Only doctors can start one;
+-- the patient is notified and joins. Each call has its own private room, and counts as over once the doctor
+-- ends it or an hour after it started.
+CREATE TABLE IF NOT EXISTS quick_calls (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL REFERENCES patients(id),
+  doctor_id  INTEGER NOT NULL REFERENCES users(id),
+  mode       TEXT NOT NULL CHECK (mode IN ('video', 'audio')),
+  room_id    TEXT NOT NULL UNIQUE,  -- 24 random hex characters
+  started_at TEXT NOT NULL,
+  ended_at   TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quick_calls_thread ON quick_calls(patient_id, doctor_id);
+
 -- "Typing…" indicator for an open conversation. Kept in the database (not in memory) because
 -- on serverless hosting the two people may be served by different instances.
 CREATE TABLE IF NOT EXISTS typing (

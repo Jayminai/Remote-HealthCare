@@ -24,7 +24,7 @@ async function unreadCounts(user) {
 
 /**
  * Counters plus the notifications created after `since` (newest first), shaped for the browser.
- * base is '' on the patient site and '/staff' in the staff portal. counts: from unreadCounts(), if already known.
+ * base is '' on the patient site, '/staff' in the staff portal and '/admin' in the admin portal. counts: from unreadCounts(), if already known.
  */
 async function summary(user, since, base, counts = null) {
   counts ??= await unreadCounts(user);

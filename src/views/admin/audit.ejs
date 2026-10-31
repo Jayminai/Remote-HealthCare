@@ -1,7 +1,7 @@
 <%- include('../partials/head') %>
 <div class="page-head">
   <h1><i class="fa-solid fa-clipboard-list h-icon" aria-hidden="true"></i>Audit log</h1>
-  <form method="get" action="/staff/admin/audit" class="row">
+  <form method="get" action="/admin/audit" class="row">
     <select name="action" style="width:auto">
       <option value="">All actions</option>
       <% actions.forEach((a) => { %><option <%= a === action ? 'selected' : '' %>><%= a %></option><% }) %>
