@@ -35,7 +35,14 @@
 | **Course** | CSC 476 Project, 2025/2026 session, Group 62 |
 | **Institution** | Department of Computer Science, University of Ibadan Distance Learning Centre |
 | **Supervisor** | Professor Bolanle Oladejo |
-| **Team** | George Godstime (Team Leader, E050801), Ibrahim Ali (E048012), Magret Ojediran (E051968) |
+
+### Team members
+
+| Name | Matric number | Role | GitHub |
+|---|---|---|---|
+| George Godstime | E050801 | Team Leader; Software Developer | [@Jayminai](https://github.com/Jayminai) |
+| Ibrahim Ali | E048012 | Requirements and Field Research | |
+| Magret Ojediran | E051968 | Documentation and Report Writing | [@maggieojediran](https://github.com/maggieojediran) |
 
 ---
 
