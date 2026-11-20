@@ -41,7 +41,7 @@
 | Name | Matric number | Role | GitHub |
 |---|---|---|---|
 | George Godstime | E050801 | Team Leader; Software Developer | [@Jayminai](https://github.com/Jayminai) |
-| Ibrahim Ali | E048012 | Requirements and Field Research | |
+| Ibrahim Ali | E048012 | Requirements and Field Research | [@Braimotech](https://github.com/braimotech) |
 | Magret Ojediran | E051968 | Documentation and Report Writing | [@maggieojediran](https://github.com/maggieojediran) |
 
 ---
